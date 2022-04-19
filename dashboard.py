@@ -36,6 +36,7 @@ with open('ressource/classifier',"rb") as f:
 #----------------------------------------------------------------------------------#
 #                                   SIDEBAR                                        #
 #----------------------------------------------------------------------------------#
+page = None
 st.sidebar.markdown(
     """
     <style>
@@ -200,7 +201,6 @@ if page == 'Client more informations':
     with placeholder_bis.container():
         if info_type == 'Current application': 
             data = pd.read_csv('data/application_sample.csv',
-                                engine='pyarrow',
                                 verbose=False,
                                 encoding='ISO-8859-1',
                                 )
@@ -229,7 +229,6 @@ if page == 'Client more informations':
     with placeholder_bis.container():
         if info_type == 'Previous application': 
             data = pd.read_csv('data/previous_application_sample.csv',
-                                engine='pyarrow',
                                 verbose=False,
                                 encoding='ISO-8859-1',
                                 )
@@ -256,7 +255,6 @@ if page == 'Client more informations':
     with placeholder_bis.container():
         if info_type == 'Credit Card balance': 
             data = pd.read_csv('data/credit_card_balance_sample.csv',
-                                engine='pyarrow',
                                 verbose=False,
                                 encoding='ISO-8859-1',
                                 )
@@ -283,7 +281,6 @@ if page == 'Client more informations':
     with placeholder_bis.container():
         if info_type == 'Installment payments': 
             data = pd.read_csv('data/installments_payments_sample.csv',
-                                engine='pyarrow',
                                 verbose=False,
                                 encoding='ISO-8859-1',
                                 )
@@ -310,7 +307,6 @@ if page == 'Client more informations':
     with placeholder_bis.container():
         if info_type == 'POS CASH balance': 
             data = pd.read_csv('data/POS_CASH_balance_sample.csv',
-                                engine='pyarrow',
                                 verbose=False,
                                 encoding='ISO-8859-1',
                                 )
