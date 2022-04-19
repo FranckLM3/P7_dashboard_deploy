@@ -1,3 +1,5 @@
+from distutils.log import info
+from xml.sax.handler import feature_external_ges
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
@@ -8,35 +10,41 @@ import plotly.express as px
 import plotly.graph_objects as go
 import dill
 
+import shap
+
 from dashboard_functions import *
+
+# Stating graphical parameters
+COLOR_BR_r = ['#00CC96', '#EF553B'] #['dodgerblue', 'indianred']
+COLOR_BR = ['indianred', 'dodgerblue']
+
 st.set_page_config(page_title= 'Credit Score App', layout="wide", initial_sidebar_state='expanded')
                 
 st.title("Evaluate your client's credit capacity.")
-
 placeholder = st.empty()
+placeholder_bis = st.empty()
 return_button = st.empty()
-with placeholder.container():
 #----------------------------------------------------------------------------------#
 #                                 LOADING DATA                                     #
 #----------------------------------------------------------------------------------#
 
-    df = pd.read_csv('data/dataset_sample.csv',
-                    engine='pyarrow',
-                    verbose=False,
-                    encoding='ISO-8859-1',
-                    )
-    df = df.replace([np.inf, -np.inf], np.nan)
+df = pd.read_csv('data/dataset_sample.csv',
+                engine='pyarrow',
+                verbose=False,
+                encoding='ISO-8859-1',
+                )
 
-    with open('ressource/pipeline',"rb") as f:
-        preprocessor = pickle.load(f)
+df = df.replace([np.inf, -np.inf], np.nan)
 
-    with open('ressource/classifier',"rb") as f:
-        clf = pickle.load(f)
+with open('ressource/pipeline',"rb") as f:
+    preprocessor = pickle.load(f)
+
+with open('ressource/classifier',"rb") as f:
+    clf = pickle.load(f)
 
 #----------------------------------------------------------------------------------#
 #                                   SIDEBAR                                        #
 #----------------------------------------------------------------------------------#
-scoring = None
 st.sidebar.markdown(
     """
     <style>
@@ -62,12 +70,7 @@ else:
     data_client= df[df["SK_ID_CURR"]==client_id]
     client_index = data_client.index[0]
 
-    with placeholder.container():
-        st.write(f"You've selected client #{client_id}.")
-        show_all = st.checkbox(f"Show client's all data.")
-        if show_all:
-                st.write(data_client.drop(['SK_ID_CURR', 'TARGET'], axis=1).to_html(index=False), unsafe_allow_html=True)
-            
+    placeholder.write(f"You've selected client #{client_id}.")
 
     gender = data_client.loc[client_index, "CODE_GENDER"]
     if gender == 1:
@@ -121,30 +124,34 @@ else:
     st.sidebar.write('**Credit amount:** {:,} $'.format(round(credit)))
     st.sidebar.write('**Annuity amount:** {:,} $'.format(round(annuity)))
     st.sidebar.write('**Payment rate:** {:.2%}'.format(payment_rate))
-    credit_button = st.sidebar.empty()
+    page_selection = st.sidebar.empty()
+    run_button = st.sidebar.empty()
+    
+    
+    page = page_selection.radio('', ['Check credit score', 'Client more informations'])
 
-    scoring = credit_button.button('Check credit score')
 
-    if scoring:
-        placeholder.empty()
-        credit_button.empty()
-#----------------------------------------------------------------------------------#
-#                                 PREPROCESSING                                    #
-#----------------------------------------------------------------------------------#
+if page == 'Check credit score':
+    check = run_button.button('Run')
+    if check:
+        run_button.empty()
+    #----------------------------------------------------------------------------------#
+    #                                 PREPROCESSING                                    #
+    #----------------------------------------------------------------------------------#
 
         X = data_client.drop(['TARGET', 'SK_ID_CURR'], axis=1)
         y = data_client['TARGET']
 
         X = preprocessor.transform(X)
 
-#----------------------------------------------------------------------------------#
-#                           PREDICT, EXPLAIN FEATURES                              #
-#----------------------------------------------------------------------------------#
+    #----------------------------------------------------------------------------------#
+    #                           PREDICT, EXPLAIN FEATURES                              #
+    #----------------------------------------------------------------------------------#
         with st.spinner(f"Model working..."):
             prob = clf.predict_proba(X)[:, 1]
-#----------------------------------------------------------------------------------#
-#                               DISPLAY RESULTS                                    #
-#----------------------------------------------------------------------------------#
+    #----------------------------------------------------------------------------------#
+    #                               DISPLAY RESULTS                                    #
+    #----------------------------------------------------------------------------------#
         with placeholder.container():
             left_column_recom, right_column_recom = st.columns(2)
 
@@ -166,59 +173,176 @@ else:
                 else:
                     st.write(f"We recommand to **reject** client's application to loan.")
                 
-                st.caption(f"Below 30% of default risk, we recommand to accept client application.\
+                st.caption(f'''Below 30% of default risk, we recommand to accept client application.\
                             Above 50% of default risk, we recommand to reject client application. \
-                            Between 30 and 50%, your expertise will be your best advice in your decision making.")
-
+                            Between 30 and 50%, your expertise will be your best advice in your decision making.\
+                            You can use the "client more informations" page to help in the evaluation.''')
             
-                # Display explainer HTML object
-           # if st.checkbox("Explain Results"):
-                
-            with st.spinner('Calculating...'):
+            # Display shap explainer of client's prediction            
+            with st.spinner('Analysing...'):
                 
                 with open('ressource/feats', 'rb') as f:
                     feats = dill.load(f)
-                with open('ressource/lime_explainer', 'rb') as f:
-                    LIME_explainer = dill.load(f)
+                with open('ressource/shap_explainer', 'rb') as f:
+                    SHAP_explainer = pickle.load(f)
 
-                exp = LIME_explainer.explain_instance(X[0],
-                                                        clf.predict_proba,
-                                                        num_features=10,
-                                                        top_labels=1)
-            html_lime = exp.as_html()
+                shap_vals = SHAP_explainer.shap_values(X[0])
 
-            st.subheader('Lime Explanation')
-            components.html(html_lime, width=1100, height=350, scrolling=True)
+                shap_explained, most_important_features = format_shap_values(shap_vals[1], feats)
+                explained_chart = plot_important_features(shap_explained, most_important_features)
 
+            st.subheader('Prediction explanation')
+            st.bokeh_chart(explained_chart)
         if return_button.button('Return'):
-            scoring = credit_button.button('Check credit score')
-            
+            scoring = run_button.button('Check credit score')
 
+if page == 'Client more informations':
+    description = pd.read_csv('data/HomeCredit_columns_description.csv',
+                                    verbose=False,
+                                    encoding='ISO-8859-1',
+                                    )
+    info_type = placeholder.radio('Select the type of information you want:', ['Current application', 
+                                                                               'Previous application',
+                                                                               'Credit Card balance',
+                                                                               'Installment payments', 
+                                                                               'POS CASH balance'])
+    with placeholder_bis.container():
+        if info_type == 'Current application': 
+            data = pd.read_csv('data/application_sample.csv',
+                                engine='pyarrow',
+                                verbose=False,
+                                encoding='ISO-8859-1',
+                                )
+            st.write('Select any information about the client:')
+            st.markdown('##')
+            st.markdown('##')
+            selected_features = st.multiselect('', data[data['SK_ID_CURR'] == client_id].dropna(axis=1).select_dtypes('float').columns)
+            if selected_features:
+                for features in selected_features:
+                    st.write('Feature description: ',description.loc[description['Row'] == features, 'Description'].values[0])
+                    data_client_value = data.loc[data['SK_ID_CURR'] == client_id, features].values
 
-
-
-
-
-    '''st.write('More info')
-    data_type = st.radio('Select the type of information you want:', ['application'])
-
-    if data_type == 'application': 
-        data = pd.read_csv('data/application_sample.csv',
-                        engine='pyarrow',
-                        verbose=False,
-                        encoding='ISO-8859-1',
-                        )
-        st.markdown('##')
-        st.markdown('##')
-        selected_data = st.multiselect("", data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)
-        import plotly.figure_factory as ff   
-        if selected_data:
-            for col in selected_data:
-                st.write(data.loc[data['SK_ID_CURR'] == client_id, col].values)
-                fig = ff.create_distplot([data[col].dropna().to_list()], group_labels=[col])
-                fig.add_vline(x=float(data.loc[data['SK_ID_CURR'] == client_id, col].values), line_dash = 'dash', line_color = 'firebrick')
-                st.plotly_chart(fig)'''
+                    # Generate distribution data
+                    hist, edges = np.histogram(data.loc[:, features].dropna(), bins=20)
+                    hist_source_df = pd.DataFrame({"edges_left": edges[:-1], "edges_right": edges[1:], "hist":hist})
+                    max_histogram = hist_source_df["hist"].max()
+                    client_line = pd.DataFrame({"x": [data_client_value, data_client_value],
+                                                "y": [0, max_histogram]})
+                    hist_source = ColumnDataSource(data=hist_source_df)
+                    plot = plot_feature_distrib(features,
+                                                client_line,
+                                                hist_source,
+                                                data_client_value,
+                                                max_histogram)
+                    st.bokeh_chart(plot)
+    with placeholder_bis.container():
+        if info_type == 'Previous application': 
+            data = pd.read_csv('data/previous_application_sample.csv',
+                                engine='pyarrow',
+                                verbose=False,
+                                encoding='ISO-8859-1',
+                                )
+            if (data['SK_ID_CURR'] == client_id).mean() > 0: 
+                st.markdown('##')
+                st.write('Select information about the client: ')
+                st.markdown('##')
+                st.markdown('##')                        
+                selected_features = st.multiselect('', np.concatenate((['All'], data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)))
+                if  'All' in selected_features:
+                    selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
                     
+                st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
+                st.write('Feature description: ')
+                
+                for features in selected_features:
+                    try:
+                        st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
+                    except:
+                        st.write('')
+            else:
+                st.write('No information on previous application.')
+
+    with placeholder_bis.container():
+        if info_type == 'Credit Card balance': 
+            data = pd.read_csv('data/credit_card_balance_sample.csv',
+                                engine='pyarrow',
+                                verbose=False,
+                                encoding='ISO-8859-1',
+                                )
+            if (data['SK_ID_CURR'] == client_id).mean() > 0: 
+                st.markdown('##')
+                st.write('Select any information about the client: ')
+                st.markdown('##')
+                st.markdown('##')                        
+                selected_features = st.multiselect('', np.concatenate((['All'], data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)))
+                if  'All' in selected_features:
+                    selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                    
+                st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
+                st.write('Feature description: ')
+                
+                for features in selected_features:
+                    try:
+                        st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
+                    except:
+                        st.write('')
+            else:
+                st.write('No information on credit card balance.')
+    
+    with placeholder_bis.container():
+        if info_type == 'Installment payments': 
+            data = pd.read_csv('data/installments_payments_sample.csv',
+                                engine='pyarrow',
+                                verbose=False,
+                                encoding='ISO-8859-1',
+                                )
+            if (data['SK_ID_CURR'] == client_id).mean() > 0: 
+                st.markdown('##')
+                st.write('Select any information about the client: ')
+                st.markdown('##')
+                st.markdown('##')                        
+                selected_features = st.multiselect('', np.concatenate((['All'], data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)))
+                if  'All' in selected_features:
+                    selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                    
+                st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
+                st.write('Feature description: ')
+                
+                for features in selected_features:
+                    try:
+                        st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
+                    except:
+                        st.write('')
+            else:
+                st.write('No information on installment payments.')
+
+    with placeholder_bis.container():
+        if info_type == 'POS CASH balance': 
+            data = pd.read_csv('data/POS_CASH_balance_sample.csv',
+                                engine='pyarrow',
+                                verbose=False,
+                                encoding='ISO-8859-1',
+                                )
+            if (data['SK_ID_CURR'] == client_id).mean() > 0: 
+                st.markdown('##')
+                st.write('Select any information about the client: ')
+                st.markdown('##')
+                st.markdown('##')                        
+                selected_features = st.multiselect('', np.concatenate((['All'], data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)))
+                if  'All' in selected_features:
+                    selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                    
+                st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
+                st.write('Feature description: ')
+                
+                for features in selected_features:
+                    try:
+                        st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
+                    except:
+                        st.write('')
+            else:
+                st.write('No information on POS CASH balance.')
+
 #----------------------------------------------------------------------------------#
 #                                    BOTTOM                                        #
 #----------------------------------------------------------------------------------#
