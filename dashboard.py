@@ -1,11 +1,7 @@
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 import numpy as np
 import pickle
-
-import plotly.express as px
-import plotly.graph_objects as go
 import dill
 
 from dashboard_functions import *
@@ -25,7 +21,6 @@ return_button = st.empty()
 #----------------------------------------------------------------------------------#
 
 df = pd.read_csv('data/dataset_sample.csv',
-                engine='pyarrow',
                 verbose=False,
                 encoding='ISO-8859-1',
                 )
