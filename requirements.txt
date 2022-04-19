@@ -8,3 +8,4 @@ bokeh==2.4.2
 joblib==1.1.0
 dill==0.3.4
 shap==0.40.0
+pyarrow==7.0.0
