@@ -9,3 +9,4 @@ joblib==1.1.0
 dill==0.3.4
 shap==0.40.0
 pyarrow==7.0.0
+lightgbm==3.3.2
