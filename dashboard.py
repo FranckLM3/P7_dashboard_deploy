@@ -151,25 +151,26 @@ if page == 'Check credit score':
                 gauge_place = st.empty()
                 for value in np.arange(0, round(prob[0]*100, 1) +.1, step=.1):
                     fig_gauge = plot_gauge(value)
-                    gauge_place.plotly_chart(fig_gauge)
+                    gauge_place.plotly_chart(fig_gauge, use_container_width=True)
 
             with right_column_recom: 
                 # Display clients data and prediction
-                st.write(f"Client #{client_id} has **{prob[0]*100:.2f} % of risk** to make default.")
+                st.subheader(f"Client #{client_id} has **{prob[0]*100:.2f} % of risk** to make default.")
 
                 if prob[0]*100 < 30:
-                    st.write(f"We recommand to **accept** client's application to loan.")
+                    st.success(f"We recommand to **accept** client's application to loan.")
                 elif (prob[0]*100 >= 30) & (prob[0]*100 <= 50):
-                    st.write(f"Client's chances to make default are between 30 and 50% . We recommand \
+                    st.warning(f"Client's chances to make default are between 30 and 50% . We recommand \
                                 to **analyse closely** the data to make your decision.")
                 else:
-                    st.write(f"We recommand to **reject** client's application to loan.")
+                    st.error(f"We recommand to **reject** client's application to loan.")
                 
+                st.markdown('##')
                 st.caption(f'''Below 30% of default risk, we recommand to accept client application.\
                             Above 50% of default risk, we recommand to reject client application. \
                             Between 30 and 50%, your expertise will be your best advice in your decision making.\
                             You can use the "client more informations" page to help in the evaluation.''')
-            
+
             # Display shap explainer of client's prediction            
             with st.spinner('Analysing...'):
                 
@@ -184,7 +185,8 @@ if page == 'Check credit score':
                 explained_chart = plot_important_features(shap_explained, most_important_features)
 
             st.subheader('Prediction explanation')
-            st.bokeh_chart(explained_chart)
+            st.bokeh_chart(explained_chart, use_container_width=True)
+            st.write('Red color indicates features that are pushing the prediction higher, and red color indicates just the opposite.')
         if return_button.button('Return'):
             scoring = run_button.button('Check credit score')
 
@@ -210,7 +212,7 @@ if page == 'Client more informations':
             selected_features = st.multiselect('', data[data['SK_ID_CURR'] == client_id].dropna(axis=1).select_dtypes('float').columns)
             if selected_features:
                 for features in selected_features:
-                    st.write('Feature description: ',description.loc[description['Row'] == features, 'Description'].values[0])
+                    st.write(features, ': ',description.loc[description['Row'] == features, 'Description'].values[0])
                     data_client_value = data.loc[data['SK_ID_CURR'] == client_id, features].values
 
                     # Generate distribution data
@@ -225,7 +227,8 @@ if page == 'Client more informations':
                                                 hist_source,
                                                 data_client_value,
                                                 max_histogram)
-                    st.bokeh_chart(plot)
+                    st.bokeh_chart(plot, use_container_width=True)
+                    st.write('---')
     with placeholder_bis.container():
         if info_type == 'Previous application': 
             data = pd.read_csv('data/previous_application_sample.csv',
@@ -238,17 +241,18 @@ if page == 'Client more informations':
                 st.markdown('##')
                 st.markdown('##')                        
                 selected_features = st.multiselect('', np.concatenate((['All'], data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)))
-                if  'All' in selected_features:
-                    selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                if selected_features:
+                    if 'All' in selected_features:
+                        selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                        
+                    st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
+                    st.write('Feature description: ')
                     
-                st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
-                st.write('Feature description: ')
-                
-                for features in selected_features:
-                    try:
-                        st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
-                    except:
-                        st.write('')
+                    for features in selected_features:
+                        try:
+                            st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
+                        except:
+                            st.write('')
             else:
                 st.write('No information on previous application.')
 
@@ -264,17 +268,18 @@ if page == 'Client more informations':
                 st.markdown('##')
                 st.markdown('##')                        
                 selected_features = st.multiselect('', np.concatenate((['All'], data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)))
-                if  'All' in selected_features:
-                    selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                if selected_features:
+                    if  'All' in selected_features:
+                        selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                        
+                    st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
+                    st.write('Feature description: ')
                     
-                st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
-                st.write('Feature description: ')
-                
-                for features in selected_features:
-                    try:
-                        st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
-                    except:
-                        st.write('')
+                    for features in selected_features:
+                        try:
+                            st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
+                        except:
+                            st.write('')
             else:
                 st.write('No information on credit card balance.')
     
@@ -290,17 +295,18 @@ if page == 'Client more informations':
                 st.markdown('##')
                 st.markdown('##')                        
                 selected_features = st.multiselect('', np.concatenate((['All'], data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)))
-                if  'All' in selected_features:
-                    selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                if selected_features:
+                    if  'All' in selected_features:
+                        selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                        
+                    st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
+                    st.write('Feature description: ')
                     
-                st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
-                st.write('Feature description: ')
-                
-                for features in selected_features:
-                    try:
-                        st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
-                    except:
-                        st.write('')
+                    for features in selected_features:
+                        try:
+                            st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
+                        except:
+                            st.write('')
             else:
                 st.write('No information on installment payments.')
 
@@ -316,17 +322,18 @@ if page == 'Client more informations':
                 st.markdown('##')
                 st.markdown('##')                        
                 selected_features = st.multiselect('', np.concatenate((['All'], data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)))
-                if  'All' in selected_features:
-                    selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                if selected_features:
+                    if  'All' in selected_features:
+                        selected_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+                        
+                    st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
+                    st.write('Feature description: ')
                     
-                st.dataframe(data.loc[data['SK_ID_CURR'] == client_id, selected_features])
-                st.write('Feature description: ')
-                
-                for features in selected_features:
-                    try:
-                        st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
-                    except:
-                        st.write('')
+                    for features in selected_features:
+                        try:
+                            st.write(features, ': ', description.loc[description['Row'] == features, 'Description'].values[0])
+                        except:
+                            st.write('')
             else:
                 st.write('No information on POS CASH balance.')
 

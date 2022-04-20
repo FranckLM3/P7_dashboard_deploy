@@ -28,7 +28,7 @@ def plot_gauge(prediction_default):
 
     fig_gauge.update_layout(width=600, 
                             height=400,
-                            margin= {'l': 20, 'r': 20, 'b': 20, 't':20})
+                            margin= {'l': 30, 'r': 30, 'b': 30, 't':30})
 
     return fig_gauge
 
@@ -64,8 +64,7 @@ def format_shap_values(shap_values, feature_names):
 
 def plot_important_features(shap_explained, most_important_features):
 
-    explained_plot = figure(y_range=most_important_features, title="Most important data in the algorithm decision", 
-                            plot_width=1000)
+    explained_plot = figure(y_range=most_important_features, title="Most important data in the algorithm decision")
 
     source = ColumnDataSource(data=shap_explained)
     bars = explained_plot.hbar(y="features", left="left", right="right", height=0.5, color="color", 
@@ -85,7 +84,7 @@ def plot_feature_distrib(feature_distrib, client_line, hist_source, data_client_
         fill_color="steelblue", hover_fill_color="orange", alpha=0.5, hover_alpha=1, source=hist_source)
 
     distrib.line(x=client_line["x"], y=client_line["y"], line_color="orange", line_width=2, line_dash="dashed")
-    label_client = Label(text="Value for client", x=data_client_value[0], y=max_histogram, text_color="orange",
+    label_client = Label(text="Client's value", x=data_client_value[0], y=max_histogram, text_color="orange",
                         x_offset=-50, y_offset=10)
 
 
@@ -103,27 +102,5 @@ def plot_feature_distrib(feature_distrib, client_line, hist_source, data_client_
 
     distrib.add_tools(hover_tools)
     distrib.add_layout(label_client)
-
-    return distrib
-
-
-def plot_feature_distrib_2(feature_distrib, hist_source, max_histogram):
-    distrib = figure(title=f"Client's value for {feature_distrib} compared to other clients", 
-                    plot_width=1000, plot_height=500)
-    qr = distrib.quad(top="hist", bottom=0, line_color="white", left="edges_left", right="edges_right",
-        fill_color="steelblue", hover_fill_color="orange", alpha=0.5, hover_alpha=1, source=hist_source)
-
-    hover_tools = HoverTool(tooltips=[("Between:", "@edges_left"), ("and:", "@edges_right"), ("Count:", "@hist")], 
-                        renderers = [qr])
-
-    distrib.xaxis.axis_label = feature_distrib
-    distrib.y_range.start = 0
-    distrib.y_range.range_padding = 0.2
-    distrib.yaxis.axis_label = "Number of clients"
-    distrib.grid.grid_line_color="grey"
-    distrib.xgrid.grid_line_color=None
-    distrib.ygrid.grid_line_alpha=0.5
-
-    distrib.add_tools(hover_tools)
 
     return distrib
