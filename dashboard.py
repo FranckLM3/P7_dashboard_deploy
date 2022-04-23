@@ -9,7 +9,6 @@ from dashboard_functions import *
 @st.cache
 def read_df(path):
     return pd.read_csv(path,
-                engine='pyarrow',
                 verbose=False,
                 encoding='ISO-8859-1',
                 )
