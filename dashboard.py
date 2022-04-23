@@ -6,9 +6,17 @@ import dill
 
 from dashboard_functions import *
 
-# Stating graphical parameters
-COLOR_BR_r = ['#00CC96', '#EF553B'] #['dodgerblue', 'indianred']
-COLOR_BR = ['indianred', 'dodgerblue']
+@st.cache
+def read_df(path):
+    return pd.read_csv(path,
+                engine='pyarrow',
+                verbose=False,
+                encoding='ISO-8859-1',
+                )
+def read_pickle(path):
+    with open(path,"rb") as f:
+        object = pickle.load(f)
+    return object
 
 st.set_page_config(page_title= 'Credit Score App', layout="wide", initial_sidebar_state='expanded')
                 
@@ -20,18 +28,13 @@ return_button = st.empty()
 #                                 LOADING DATA                                     #
 #----------------------------------------------------------------------------------#
 
-df = pd.read_csv('data/dataset_sample.csv',
-                verbose=False,
-                encoding='ISO-8859-1',
-                )
+df = read_df('data/dataset_sample.csv')
 
 df = df.replace([np.inf, -np.inf], np.nan)
 
-with open('ressource/pipeline',"rb") as f:
-    preprocessor = pickle.load(f)
+preprocessor = read_pickle('ressource/pipeline')
 
-with open('ressource/classifier',"rb") as f:
-    clf = pickle.load(f)
+clf = read_pickle('ressource/classifier')
 
 #----------------------------------------------------------------------------------#
 #                                   SIDEBAR                                        #
@@ -56,7 +59,10 @@ def selectbox_with_default(text, values, default='Client ID:', sidebar=False):
 client_id = selectbox_with_default('', all_clients_id)
 
 if client_id == 'Client ID:':
-    placeholder.warning("Please select a client !")
+    with placeholder.container():
+        st.write("This WebApps is a decision making helping tool.\n\
+        A supervised binary classifier algorithm has been trained in order to predict the client's probability to make a default payment or not.")
+        st.warning("Please select a client !")
 
 else:
     data_client= df[df["SK_ID_CURR"]==client_id]
@@ -155,7 +161,8 @@ if page == 'Check credit score':
 
             with right_column_recom: 
                 # Display clients data and prediction
-                st.subheader(f"Client #{client_id} has **{prob[0]*100:.2f} % of risk** to make default.")
+                st.write(f"Client #{client_id} has **{prob[0]*100:.2f} % of risk** to make default.")
+                st.markdown('##')
 
                 if prob[0]*100 < 30:
                     st.success(f"We recommand to **accept** client's application to loan.")
@@ -165,6 +172,7 @@ if page == 'Check credit score':
                 else:
                     st.error(f"We recommand to **reject** client's application to loan.")
                 
+                st.markdown('##')
                 st.markdown('##')
                 st.caption(f'''Below 30% of default risk, we recommand to accept client application.\
                             Above 50% of default risk, we recommand to reject client application. \
@@ -176,8 +184,7 @@ if page == 'Check credit score':
                 
                 with open('ressource/feats', 'rb') as f:
                     feats = dill.load(f)
-                with open('ressource/shap_explainer', 'rb') as f:
-                    SHAP_explainer = pickle.load(f)
+                SHAP_explainer = read_pickle('ressource/shap_explainer')
 
                 shap_vals = SHAP_explainer.shap_values(X[0])
 
@@ -202,10 +209,7 @@ if page == 'Client more informations':
                                                                                'POS CASH balance'])
     with placeholder_bis.container():
         if info_type == 'Current application': 
-            data = pd.read_csv('data/application_sample.csv',
-                                verbose=False,
-                                encoding='ISO-8859-1',
-                                )
+            data = read_df('data/application_sample.csv')
             st.write('Select any information about the client:')
             st.markdown('##')
             st.markdown('##')
@@ -231,10 +235,7 @@ if page == 'Client more informations':
                     st.write('---')
     with placeholder_bis.container():
         if info_type == 'Previous application': 
-            data = pd.read_csv('data/previous_application_sample.csv',
-                                verbose=False,
-                                encoding='ISO-8859-1',
-                                )
+            data = read_df('data/previous_application_sample.csv')
             if (data['SK_ID_CURR'] == client_id).mean() > 0: 
                 st.markdown('##')
                 st.write('Select information about the client: ')
@@ -258,10 +259,7 @@ if page == 'Client more informations':
 
     with placeholder_bis.container():
         if info_type == 'Credit Card balance': 
-            data = pd.read_csv('data/credit_card_balance_sample.csv',
-                                verbose=False,
-                                encoding='ISO-8859-1',
-                                )
+            data = read_df('data/credit_card_balance_sample.csv')
             if (data['SK_ID_CURR'] == client_id).mean() > 0: 
                 st.markdown('##')
                 st.write('Select any information about the client: ')
@@ -285,10 +283,7 @@ if page == 'Client more informations':
     
     with placeholder_bis.container():
         if info_type == 'Installment payments': 
-            data = pd.read_csv('data/installments_payments_sample.csv',
-                                verbose=False,
-                                encoding='ISO-8859-1',
-                                )
+            data = read_df('data/installments_payments_sample.csv')
             if (data['SK_ID_CURR'] == client_id).mean() > 0: 
                 st.markdown('##')
                 st.write('Select any information about the client: ')
@@ -312,10 +307,7 @@ if page == 'Client more informations':
 
     with placeholder_bis.container():
         if info_type == 'POS CASH balance': 
-            data = pd.read_csv('data/POS_CASH_balance_sample.csv',
-                                verbose=False,
-                                encoding='ISO-8859-1',
-                                )
+            data = read_df('data/POS_CASH_balance_sample.csv')
             if (data['SK_ID_CURR'] == client_id).mean() > 0: 
                 st.markdown('##')
                 st.write('Select any information about the client: ')
