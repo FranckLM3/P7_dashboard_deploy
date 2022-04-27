@@ -104,3 +104,57 @@ def plot_feature_distrib(feature_distrib, client_line, hist_source, data_client_
     distrib.add_layout(label_client)
 
     return distrib
+
+
+def b_boxplot(df, target:str, feature:str):
+    df = df.loc[:, [feature, target]]
+    # find the quartiles and IQR for each category
+    groups = df.groupby(target)
+    cats = df[target].unique()
+    q1 = groups.quantile(q=0.25)
+    q2 = groups.quantile(q=0.5)
+    q3 = groups.quantile(q=0.75)
+    iqr = q3 - q1
+    upper = q3 + 1.5*iqr
+    lower = q1 - 1.5*iqr
+
+    # find the outliers for each category
+    '''def outliers(group):
+        cat = group.name
+        return group[(group.loc[feature] > upper.loc[cat][feature]) | (group[feature] < lower.loc[cat][feature])][feature]
+    out = groups.apply(outliers).dropna()
+    # prepare outlier data for plotting, we need coordinates for every outlier.
+    if not out.empty:
+        outx = list(out.index.get_level_values(0))
+        outy = list(out.values)'''
+
+    p = figure(tools="", background_fill_color="#efefef", x_range=cats, toolbar_location=None)
+
+    # if no outliers, shrink lengths of stems to be no longer than the minimums or maximums
+    qmin = groups.quantile(q=0.00)
+    qmax = groups.quantile(q=1.00)
+    upper.loc[feature] = [min([x,y]) for (x,y) in zip(list(qmax.loc[:,feature]),upper.loc[feature])]
+    lower.loc[feature] = [max([x,y]) for (x,y) in zip(list(qmin.loc[:,feature]),lower.loc[feature])]
+
+    # stems
+    p.segment(cats, upper.loc[feature], cats, q3.loc[feature], line_color="black")
+    p.segment(cats, lower.loc[feature], cats, q1.loc[feature], line_color="black")
+
+    # boxes
+    p.vbar(cats, 0.7, q2.loc[feature], q3.loc[feature], fill_color="#E08E79", line_color="black")
+    p.vbar(cats, 0.7, q1.loc[feature], q2.loc[feature], fill_color="#3B8686", line_color="black")
+
+    # whiskers (almost-0 height rects simpler than segments)
+    p.rect(cats, lower.loc[feature], 0.2, 0.01, line_color="black")
+    p.rect(cats, upper.loc[feature], 0.2, 0.01, line_color="black")
+
+    # outliers
+    if not out.empty:
+        p.circle(outx, outy, size=6, color="#F38630", fill_alpha=0.6)
+
+    p.xgrid.grid_line_color = None
+    p.ygrid.grid_line_color = "white"
+    p.grid.grid_line_width = 2
+    p.xaxis.major_label_text_font_size="16px"
+
+    return p

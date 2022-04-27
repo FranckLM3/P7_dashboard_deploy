@@ -1,8 +1,11 @@
+import imp
 import pandas as pd
 import streamlit as st
 import numpy as np
 import pickle
 import dill
+import requests
+import plotly.express as px
 
 from dashboard_functions import *
 
@@ -142,10 +145,14 @@ if page == 'Check credit score':
         X = preprocessor.transform(X)
 
     #----------------------------------------------------------------------------------#
-    #                           PREDICT, EXPLAIN FEATURES                              #
+    #                           PREDICT, WITH API                                      #
     #----------------------------------------------------------------------------------#
         with st.spinner(f"Model working..."):
-            prob = clf.predict_proba(X)[:, 1]
+            url_api = 'https://credit-score-fastapi.herokuapp.com'
+            data_json = {"id" : int(client_id)}
+            headers = {"Content-Type": "application/json"}
+            response = requests.request(method="POST", headers=headers, url=url_api, json=data_json).json()
+            prob = response["Credit score"]
     #----------------------------------------------------------------------------------#
     #                               DISPLAY RESULTS                                    #
     #----------------------------------------------------------------------------------#
@@ -154,18 +161,18 @@ if page == 'Check credit score':
 
             with left_column_recom:
                 gauge_place = st.empty()
-                for value in np.arange(0, round(prob[0]*100, 1) +.1, step=.1):
+                for value in np.arange(0, round(prob*100, 1) +.1, step=.1):
                     fig_gauge = plot_gauge(value)
                     gauge_place.plotly_chart(fig_gauge, use_container_width=True)
 
             with right_column_recom: 
                 # Display clients data and prediction
-                st.write(f"Client #{client_id} has **{prob[0]*100:.2f} % of risk** to make default.")
+                st.write(f"Client #{client_id} has **{prob*100:.2f} % of risk** to make default.")
                 st.markdown('##')
 
-                if prob[0]*100 < 30:
+                if prob*100 < 30:
                     st.success(f"We recommand to **accept** client's application to loan.")
-                elif (prob[0]*100 >= 30) & (prob[0]*100 <= 50):
+                elif (prob*100 >= 30) & (prob*100 <= 50):
                     st.warning(f"Client's chances to make default are between 30 and 50% . We recommand \
                                 to **analyse closely** the data to make your decision.")
                 else:
@@ -213,25 +220,85 @@ if page == 'Client more informations':
             st.markdown('##')
             st.markdown('##')
             selected_features = st.multiselect('', data[data['SK_ID_CURR'] == client_id].dropna(axis=1).select_dtypes('float').columns)
-            if selected_features:
+            st.write('Select one second information about the client:')
+            st.markdown('##')
+            st.markdown('##')
+            def selectbox_with_default_2(text, values, default="Client's variable: ", sidebar=False):
+                func = st.selectbox if sidebar else st.selectbox
+                return func(text, np.insert(np.array(values, object), 0, default))
+            selected_features_2 = selectbox_with_default_2('', data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns)
+            graph_place = st.empty()
+            if selected_features and selected_features_2 == "Client's variable: ":
                 for features in selected_features:
                     st.write(features, ': ',description.loc[description['Row'] == features, 'Description'].values[0])
-                    data_client_value = data.loc[data['SK_ID_CURR'] == client_id, features].values
+                    with st.container():
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            data_client_value = data.loc[data['SK_ID_CURR'] == client_id, features].values
+                            data_client_target = data.loc[data['SK_ID_CURR'] == client_id, 'TARGET'].values
 
-                    # Generate distribution data
-                    hist, edges = np.histogram(data.loc[:, features].dropna(), bins=20)
-                    hist_source_df = pd.DataFrame({"edges_left": edges[:-1], "edges_right": edges[1:], "hist":hist})
-                    max_histogram = hist_source_df["hist"].max()
-                    client_line = pd.DataFrame({"x": [data_client_value, data_client_value],
-                                                "y": [0, max_histogram]})
-                    hist_source = ColumnDataSource(data=hist_source_df)
-                    plot = plot_feature_distrib(features,
-                                                client_line,
-                                                hist_source,
-                                                data_client_value,
-                                                max_histogram)
-                    st.bokeh_chart(plot, use_container_width=True)
+                            # Generate distribution data
+                            hist, edges = np.histogram(data.loc[:, features].dropna(), bins=20)
+                            hist_source_df = pd.DataFrame({"edges_left": edges[:-1], "edges_right": edges[1:], "hist":hist})
+                            max_histogram = hist_source_df["hist"].max()
+                            client_line = pd.DataFrame({"x": [data_client_value, data_client_value],
+                                                        "y": [0, max_histogram]})
+                            hist_source = ColumnDataSource(data=hist_source_df)
+                            plot = plot_feature_distrib(features,
+                                                        client_line,
+                                                        hist_source,
+                                                        data_client_value,
+                                                        max_histogram)
+                            st.bokeh_chart(plot, use_container_width=True)
+                        
+                        with col2:
+                            fig = px.box(data, x='TARGET', y=features, points="outliers", color=data['TARGET'], height=580)
+                            fig.update_traces(quartilemethod="inclusive")
+                            fig.add_trace(go.Scatter(x=data_client_target,
+                                                    y=data_client_value,
+                                                    mode='markers',
+                                                    marker=dict(size=10),
+                                                    showlegend=False,
+                                                    name='client'))
+                            
+                            st.plotly_chart(fig, use_container_width=True) 
                     st.write('---')
+            elif selected_features and selected_features_2 != "Client's variable: ": 
+                with graph_place.container():
+                    for features in selected_features:
+                        try:
+                            data[selected_features].astypes('float')
+                            data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
+                            data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
+                            fig = px.scatter(data, x=features, y=selected_features_2, color=str('TARGET'), height=580, opacity=.3)
+                            fig.add_trace(go.Scattergl(x=data_client_value_1,
+                                                    y=data_client_value_2,
+                                                    mode='markers',
+                                                    marker=dict(size=10, color = 'red'),
+                                                    name='client'))
+                            fig.update_layout(legend=dict(
+                                                yanchor="top",
+                                                y=0.99,
+                                                xanchor="left",
+                                                x=0.01
+                                            ))
+                            st.plotly_chart(fig, use_container_width=True) 
+                            st.write('---')
+                        except:
+                            data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
+                            data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
+                            fig = px.box(data, x=selected_features_2, y=features, points="outliers", color=selected_features_2, height=580)
+                            fig.update_traces(quartilemethod="inclusive")
+                            fig.add_trace(go.Scatter(x=data_client_value_2,
+                                                     y=data_client_value_1,
+                                                     mode='markers',
+                                                     marker=dict(size=10),
+                                                     showlegend=False,
+                                                     name='client'))
+                            
+                            st.plotly_chart(fig, use_container_width=True)
+                            st.write('---')
+
     with placeholder_bis.container():
         if info_type == 'Previous application': 
             data = read_df('data/previous_application_sample.csv')
