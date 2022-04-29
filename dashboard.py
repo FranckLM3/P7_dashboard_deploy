@@ -1,4 +1,3 @@
-import imp
 import pandas as pd
 import streamlit as st
 import numpy as np
@@ -266,11 +265,10 @@ if page == 'Client more informations':
             elif selected_features and selected_features_2 != "Client's variable: ": 
                 with graph_place.container():
                     for features in selected_features:
-                        try:
-                            data[selected_features].astypes('float')
+                        if selected_features_2 in data.select_dtypes('float').columns.to_list():
                             data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
                             data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
-                            fig = px.scatter(data, x=features, y=selected_features_2, color=str('TARGET'), height=580, opacity=.3)
+                            fig = px.scatter(data, x=features, y=selected_features_2, height=580, opacity=.3)
                             fig.add_trace(go.Scattergl(x=data_client_value_1,
                                                     y=data_client_value_2,
                                                     mode='markers',
@@ -282,9 +280,9 @@ if page == 'Client more informations':
                                                 xanchor="left",
                                                 x=0.01
                                             ))
-                            st.plotly_chart(fig, use_container_width=True) 
+                            st.plotly_chart(fig, use_container_width=True)
                             st.write('---')
-                        except:
+                        else:
                             data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
                             data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
                             fig = px.box(data, x=selected_features_2, y=features, points="outliers", color=selected_features_2, height=580)
