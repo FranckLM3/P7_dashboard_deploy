@@ -8,7 +8,7 @@ import plotly.express as px
 
 from dashboard_functions import *
 
-@st.cache
+@st.cache(allow_output_mutation=True)
 def read_df(path):
     return pd.read_csv(path,
                 verbose=False,
@@ -215,6 +215,7 @@ if page == 'Client more informations':
     with placeholder_bis.container():
         if info_type == 'Current application': 
             data = read_df('data/application_sample.csv')
+            data["TARGET"] = data["TARGET"].astype(str)
             st.write('Select any information about the client:')
             st.markdown('##')
             st.markdown('##')
@@ -268,7 +269,7 @@ if page == 'Client more informations':
                         if selected_features_2 in data.select_dtypes('float').columns.to_list():
                             data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
                             data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
-                            fig = px.scatter(data, x=features, y=selected_features_2, height=580, opacity=.3)
+                            fig = px.scatter(data, x=features, y=selected_features_2, color='TARGET', height=580, opacity=.3)
                             fig.add_trace(go.Scattergl(x=data_client_value_1,
                                                     y=data_client_value_2,
                                                     mode='markers',
@@ -276,9 +277,9 @@ if page == 'Client more informations':
                                                     name='client'))
                             fig.update_layout(legend=dict(
                                                 yanchor="top",
-                                                y=0.99,
+                                                y=1,
                                                 xanchor="left",
-                                                x=0.01
+                                                x=1
                                             ))
                             st.plotly_chart(fig, use_container_width=True)
                             st.write('---')
