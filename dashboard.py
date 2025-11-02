@@ -1,23 +1,17 @@
+import os
 import pandas as pd
 import streamlit as st
 import numpy as np
-import pickle
-import dill
-import requests
+if not hasattr(np, "int"):
+    np.int = int  # temporary compatibility for pickled objects expecting np.int
 import plotly.express as px
 
 from dashboard_functions import *
+from utils import read_df, read_pickle, predict_with_api_or_local
 
-@st.cache(allow_output_mutation=True)
-def read_df(path):
-    return pd.read_csv(path,
-                verbose=False,
-                encoding='ISO-8859-1',
-                )
-def read_pickle(path):
-    with open(path,"rb") as f:
-        object = pickle.load(f)
-    return object
+@st.cache_data
+def _read_df_cached(path):
+    return read_df(path)
 
 st.set_page_config(page_title= 'Credit Score App', layout="wide", initial_sidebar_state='expanded')
                 
@@ -29,7 +23,7 @@ return_button = st.empty()
 #                                 LOADING DATA                                     #
 #----------------------------------------------------------------------------------#
 
-df = read_df('data/dataset_sample.csv')
+df = _read_df_cached('data/dataset_sample.csv')
 
 df = df.replace([np.inf, -np.inf], np.nan)
 
@@ -141,17 +135,21 @@ if page == 'Check credit score':
         X = data_client.drop(['TARGET', 'SK_ID_CURR'], axis=1)
         y = data_client['TARGET']
 
-        X = preprocessor.transform(X)
+        # Do not transform X here — the helper will call the API first.
+        # If local fallback is used, helper will call preprocessor.transform.
 
     #----------------------------------------------------------------------------------#
     #                           PREDICT, WITH API                                      #
     #----------------------------------------------------------------------------------#
         with st.spinner(f"Model working..."):
-            url_api = 'https://credit-score-fastapi.herokuapp.com'
-            data_json = {"id" : int(client_id)}
-            headers = {"Content-Type": "application/json"}
-            response = requests.request(method="POST", headers=headers, url=url_api, json=data_json).json()
-            prob = response["Credit score"]
+            # API is the default source of truth; make it configurable via env var
+            url_api = os.getenv('CREDIT_SCORE_API_URL', 'https://credit-score-api-572900860091.europe-west1.run.app')
+            # Use helper which tries API first, then falls back to local classifier
+            prob = predict_with_api_or_local(client_id,
+                                            X,
+                                            api_url=url_api,
+                                            classifier=clf,
+                                            preprocessor=preprocessor)
     #----------------------------------------------------------------------------------#
     #                               DISPLAY RESULTS                                    #
     #----------------------------------------------------------------------------------#
@@ -186,12 +184,17 @@ if page == 'Check credit score':
 
             # Display shap explainer of client's prediction            
             with st.spinner('Analysing...'):
-                
-                with open('ressource/feats', 'rb') as f:
-                    feats = dill.load(f)
+
+                feats = read_pickle('ressource/feats')
                 SHAP_explainer = read_pickle('ressource/shap_explainer')
 
-                shap_vals = SHAP_explainer.shap_values(X[0])
+                # SHAP explainer expects preprocessed input; transform X for explanation only
+                try:
+                    X_trans = preprocessor.transform(X)
+                except Exception:
+                    X_trans = X
+
+                shap_vals = SHAP_explainer.shap_values(X_trans[0])
 
                 shap_explained, most_important_features = format_shap_values(shap_vals[1], feats)
                 explained_chart = plot_important_features(shap_explained, most_important_features)

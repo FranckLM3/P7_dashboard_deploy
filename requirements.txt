@@ -1,12 +1,14 @@
-pandas==1.3.4
-streamlit==1.2.0
-numpy==1.21.2
+pandas==2.1.2
+streamlit==1.50.0
+numpy==1.26.1
 pickleshare==0.7.5
-sklearn==0.0
+scikit-learn==1.0.2
 plotly==5.5.0
 bokeh==2.4.1
 joblib==1.1.0
 dill==0.3.4
 shap==0.40.0
-pyarrow==7.0.0
-lightgbm==3.3.2
+pyarrow==13.0.0
+# Install LightGBM only on Linux (Cloud/Docker). Skip on macOS to avoid local compilation issues.
+lightgbm==4.1.0; platform_system == 'Linux'
+requests==2.32.5
