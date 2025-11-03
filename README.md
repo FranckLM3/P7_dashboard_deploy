@@ -146,7 +146,7 @@ docker run -p 8501:8501 credit-dashboard
 ## Tech Stack
 
 - **Framework**: Streamlit 1.50.0
-- **Visualization**: Plotly, Bokeh
+- **Visualization**: Plotly
 - **ML**: scikit-learn 1.5+, LightGBM 4.1+
 - **Data**: Pandas, NumPy
 - **API Client**: Requests

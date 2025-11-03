@@ -3,10 +3,14 @@ import pickle
 import dill
 import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
+import shap
+shap.initjs()
+
 
 def read_df(path):
     """Read a CSV into a DataFrame with consistent encoding and replacements."""
-    return pd.read_csv(path, verbose=False, encoding='ISO-8859-1')
+    return pd.read_csv(path, encoding='ISO-8859-1')
 
 
 def read_pickle(path):
@@ -81,3 +85,228 @@ def predict_with_api_or_local(client_id, X_df, api_url=None, classifier=None, pr
         return float(proba)
     except Exception as exc:
         raise RuntimeError(f"Classifier prediction failed: {exc}")
+
+
+def plot_gauge(prediction_default):
+    # Determine color based on risk level
+    if prediction_default < 30:
+        bar_color = '#2ecc71'  # Green
+    elif prediction_default < 50:
+        bar_color = '#f39c12'  # Orange
+    else:
+        bar_color = '#e74c3c'  # Red
+    
+    fig_gauge = go.Figure(go.Indicator(
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        value = prediction_default,
+        mode = "gauge+number+delta",
+        title = {'text': "Risk of Default (%)", 'font': {'size': 20, 'color': '#2c3e50'}},
+        number = {'font': {'size': 40, 'color': '#2c3e50'}},
+        gauge = {
+            'axis': {
+                'range': [None, 100],
+                'tick0': 0,
+                'dtick': 10,
+                'tickwidth': 2,
+                'tickcolor': '#2c3e50'
+            },
+            'bar': {
+                'color': bar_color,
+                'thickness': 0.35,
+                'line': {'color': 'white', 'width': 2}
+            },
+            'bgcolor': 'white',
+            'borderwidth': 2,
+            'bordercolor': '#ecf0f1',
+            'steps': [
+                {'range': [0, 30], 'color': "rgba(46, 204, 113, 0.2)"},   # Light green
+                {'range': [30, 50], 'color': "rgba(243, 156, 18, 0.2)"},  # Light orange
+                {'range': [50, 100], 'color': "rgba(231, 76, 60, 0.2)"}   # Light red
+            ],
+            'threshold': {
+                'line': {'color': bar_color, 'width': 4},
+                'thickness': 0.75,
+                'value': prediction_default
+            }
+        }
+    ))
+
+    fig_gauge.update_layout(
+        height=400,
+        margin={'l': 30, 'r': 30, 'b': 30, 't': 50},
+        paper_bgcolor='white',
+        font={'family': 'Arial, sans-serif'},
+        autosize=True
+    )
+    
+    # Add smooth CSS-based animation using Plotly's built-in transitions
+    fig_gauge.update_traces(
+        selector=dict(type='indicator'),
+        # Smooth transition for gauge needle
+    )
+
+    return fig_gauge
+
+def format_shap_values(shap_values, feature_names):
+    """
+    Format shap values into a dataframe to be plotted with Plotly.
+    Returns the 15 most important shap values with colors and signs.
+    """
+
+    # Si shap_values est 2D (par exemple shap_values.shape = (n_samples, n_features))
+    # on prend la moyenne absolue par feature
+    if len(shap_values.shape) > 1:
+        shap_values_mean = np.abs(shap_values).mean(axis=0)
+        shap_values_single = shap_values.mean(axis=0)
+    else:
+        shap_values_mean = np.abs(shap_values)
+        shap_values_single = shap_values
+
+    # Crée le DataFrame avec les vrais noms de features
+    df = pd.DataFrame({
+        "features": feature_names,
+        "shap_values": shap_values_single,
+        "absolute_values": shap_values_mean
+    })
+
+    # Trie par importance
+    df.sort_values(by="absolute_values", ascending=False, inplace=True)
+    df.reset_index(drop=True, inplace=True)
+
+    # Ajout des colonnes de signe et couleur
+    df["left"] = df["shap_values"].where(df["shap_values"] < 0, 0)
+    df["right"] = df["shap_values"].where(df["shap_values"] > 0, 0)
+    df["color"] = np.where(df["shap_values"] > 0, "#D73027", "#1A9851")
+
+    # Sélectionne les 15 plus importants
+    shap_explained = df.head(15).copy()
+
+    # Liste des features dans l'ordre inverse pour affichage
+    most_important_features = shap_explained["features"].iloc[::-1].tolist()
+
+    return shap_explained, most_important_features
+
+def plot_important_features(shap_explained, most_important_features):
+    """
+    Create a Plotly horizontal bar chart for SHAP feature importance.
+    Red bars = increase risk, Green bars = decrease risk
+    """
+    # Reverse order for plotting (most important at top)
+    shap_plot = shap_explained.iloc[::-1].copy()
+    
+    # Create Plotly figure with custom colors for each bar
+    fig = go.Figure()
+    
+    # Add bars with individual colors
+    for idx, row in shap_plot.iterrows():
+        fig.add_trace(go.Bar(
+            x=[row['shap_values']],
+            y=[row['features']],
+            orientation='h',
+            marker=dict(color=row['color']),
+            hovertemplate='<b>%{y}</b><br>Impact: %{x:.4f}<extra></extra>',
+            showlegend=False
+        ))
+    
+    # Update layout
+    fig.update_layout(
+        title={
+            'text': "Most important features in algorithm decision",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 16, 'color': '#2c3e50'}
+        },
+        xaxis_title="Impact on model output",
+        yaxis_title="Client's information",
+        height=500,
+        margin=dict(l=200, r=50, t=80, b=50),
+        hovermode='closest',
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        xaxis=dict(
+            gridcolor='lightgray',
+            zeroline=True,
+            zerolinecolor='black',
+            zerolinewidth=2
+        ),
+        yaxis=dict(
+            gridcolor='lightgray'
+        )
+    )
+    
+    return fig
+
+
+def plot_feature_distrib(feature_distrib, client_line, hist_source, data_client_value, max_histogram):
+    """
+    Create a Plotly histogram showing feature distribution with client's position.
+    """
+    # Extract histogram data
+    hist_df = hist_source.data if hasattr(hist_source, 'data') else hist_source
+    
+    # Create the bar chart for histogram
+    fig = go.Figure()
+    
+    # Add histogram bars
+    fig.add_trace(go.Bar(
+        x=[(hist_df['edges_left'][i] + hist_df['edges_right'][i]) / 2 
+           for i in range(len(hist_df['edges_left']))],
+        y=hist_df['hist'],
+        width=[hist_df['edges_right'][i] - hist_df['edges_left'][i] 
+               for i in range(len(hist_df['edges_left']))],
+        marker=dict(
+            color='steelblue',
+            opacity=0.7,
+            line=dict(color='white', width=1)
+        ),
+        hovertemplate='<b>Range:</b> %{customdata[0]:.2f} to %{customdata[1]:.2f}<br><b>Count:</b> %{y}<extra></extra>',
+        customdata=[[hist_df['edges_left'][i], hist_df['edges_right'][i]] 
+                    for i in range(len(hist_df['edges_left']))],
+        name='Distribution'
+    ))
+    
+    # Add client's value line
+    fig.add_trace(go.Scatter(
+        x=[data_client_value[0], data_client_value[0]],
+        y=[0, max_histogram],
+        mode='lines',
+        line=dict(color='orange', width=3, dash='dash'),
+        name="Client's value",
+        hovertemplate='<b>Client\'s value:</b> %{x:.2f}<extra></extra>'
+    ))
+    
+    # Add annotation for client's value
+    fig.add_annotation(
+        x=data_client_value[0],
+        y=max_histogram * 1.05,
+        text="Client's value",
+        showarrow=True,
+        arrowhead=2,
+        arrowcolor='orange',
+        font=dict(color='orange', size=12),
+        bgcolor='white',
+        bordercolor='orange',
+        borderwidth=2
+    )
+    
+    # Update layout
+    fig.update_layout(
+        title={
+            'text': f"Client value for {feature_distrib} compared to other clients",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 14, 'color': '#2c3e50'}
+        },
+        xaxis_title=feature_distrib,
+        yaxis_title="Number of clients",
+        height=580,
+        showlegend=True,
+        hovermode='closest',
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        xaxis=dict(gridcolor='lightgray'),
+        yaxis=dict(gridcolor='lightgray', rangemode='tozero')
+    )
+    
+    return fig
+
