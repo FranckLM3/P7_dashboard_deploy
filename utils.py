@@ -42,11 +42,12 @@ def predict_with_api_or_local(client_id, X_df, api_url=None, classifier=None, pr
         try:
             data_json = {"id": int(client_id)}
             headers = {"Content-Type": "application/json"}
-            response = requests.post(api_url, json=data_json, headers=headers, timeout=timeout)
+            response = requests.post(f"{api_url}/predict", json=data_json, headers=headers, timeout=timeout)
             response.raise_for_status()
             content = response.json()
-            if isinstance(content, dict) and "Credit score" in content:
-                return float(content["Credit score"]) / 1.0
+            # New API format returns {"credit_score": float, "advice": str}
+            if isinstance(content, dict) and "credit_score" in content:
+                return float(content["credit_score"])
         except Exception:
             # swallow and fallback to local if available
             pass

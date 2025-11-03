@@ -2,8 +2,7 @@ import os
 import pandas as pd
 import streamlit as st
 import numpy as np
-if not hasattr(np, "int"):
-    np.int = int  # temporary compatibility for pickled objects expecting np.int
+
 import plotly.express as px
 
 from dashboard_functions import *
