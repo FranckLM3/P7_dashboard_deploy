@@ -208,6 +208,16 @@ st.markdown("""
     section[data-testid="stSidebar"] .stMetric [data-testid="stMetricDelta"] {
         color: #666666 !important;
     }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+        .main-header { font-size: 2rem; }
+        .sub-header { font-size: 1rem; }
+        .stMetric { padding: 0.5rem; }
+        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
+        /* Force Streamlit columns to stack when too narrow */
+        div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -241,9 +251,10 @@ all_clients_id = df['SK_ID_CURR'].unique()
 
 # Client selector with search
 client_id = st.sidebar.selectbox(
-    "",
+    "Client",
     options=[''] + list(all_clients_id),
-    format_func=lambda x: "Choose a client..." if x == '' else f"Client #{int(x)}"
+    format_func=lambda x: "Choose a client..." if x == '' else f"Client #{int(x)}",
+    label_visibility="collapsed"
 )
 
 if client_id == '':
@@ -361,6 +372,13 @@ else:
     else:
         run_button = False
 
+    # Layout preference for better small-screen experience
+    is_mobile = st.sidebar.toggle(
+        "📱 Mobile layout",
+        value=False,
+        help="Stack sections and enlarge spacing for small screens"
+    )
+
 
 if page == 'Check credit score':
     if run_button:
@@ -424,42 +442,69 @@ if page == 'Check credit score':
                 decision_icon = "❌"
                 recommendation = "We recommend  REJECTING this client's loan application due to high default risk."
             
-            # Main results in columns with fixed layout
-            col1, col2, col3 = st.columns([2, 1, 2])
-            
-            with col1:
-                # Container for gauge with fixed height
+            # Main results: desktop uses columns; mobile stacks sections
+            if is_mobile:
+                # Gauge
                 with st.container():
-                    # Display gauge directly - Plotly handles smooth animation internally
                     fig_gauge = plot_gauge(risk_score)
                     st.plotly_chart(fig_gauge, use_container_width=True)
-            
-            with col2:
-                # Centered container with proper vertical alignment
+
+                # Score card
                 st.markdown(f"""
-                    <div style='display: flex; align-items: center; height: 400px;'>
-                        <div style='text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    <div style='display: flex; align-items: center;'>
+                        <div style='text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                              border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); width: 100%; display: flex; 
                              flex-direction: column; justify-content: center;'>
-                            <h1 style='color: white; margin: 0; font-size: 3.5rem;'>{risk_icon}</h1>
+                            <h1 style='color: white; margin: 0; font-size: 3rem;'>{risk_icon}</h1>
                             <h2 style='color: white; margin: 0.5rem 0;'>{risk_score:.1f}%</h2>
-                            <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 1.1rem;'>{risk_level}</p>
+                            <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 1rem;'>{risk_level}</p>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
-            
-            with col3:
-                # Centered container with proper vertical alignment
+
+                # Decision
                 st.markdown(f"""
-                    <div style='display: flex; align-items: center; height: 400px;'>
-                        <div style='padding: 2rem; border-left: 5px solid {risk_color}; 
+                    <div style='display: flex; align-items: center;'>
+                        <div style='padding: 1.5rem; border-left: 5px solid {risk_color}; 
                              background-color: rgba(128,128,128,0.05); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05);
                              width: 100%; display: flex; flex-direction: column; justify-content: center;'>
-                            <h2 style='color: {risk_color}; margin: 0 0 1rem 0;'>{decision_icon} {decision}</h2>
-                            <p style='margin: 0; font-size: 1.1rem;'>{recommendation}</p>
+                            <h2 style='color: {risk_color}; margin: 0 0 0.5rem 0;'>{decision_icon} {decision}</h2>
+                            <p style='margin: 0; font-size: 1rem;'>{recommendation}</p>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
+            else:
+                col1, col2, col3 = st.columns([2, 1, 2])
+
+                with col1:
+                    with st.container():
+                        fig_gauge = plot_gauge(risk_score)
+                        st.plotly_chart(fig_gauge, use_container_width=True)
+
+                with col2:
+                    st.markdown(f"""
+                        <div style='display: flex; align-items: center; height: 400px;'>
+                            <div style='text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                                 border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); width: 100%; display: flex; 
+                                 flex-direction: column; justify-content: center;'>
+                                <h1 style='color: white; margin: 0; font-size: 3.5rem;'>{risk_icon}</h1>
+                                <h2 style='color: white; margin: 0.5rem 0;'>{risk_score:.1f}%</h2>
+                                <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 1.1rem;'>{risk_level}</p>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                with col3:
+                    st.markdown(f"""
+                        <div style='display: flex; align-items: center; height: 400px;'>
+                            <div style='padding: 2rem; border-left: 5px solid {risk_color}; 
+                                 background-color: rgba(128,128,128,0.05); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+                                 width: 100%; display: flex; flex-direction: column; justify-content: center;'>
+                                <h2 style='color: {risk_color}; margin: 0 0 1rem 0;'>{decision_icon} {decision}</h2>
+                                <p style='margin: 0; font-size: 1.1rem;'>{recommendation}</p>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
             
             st.markdown("---")
             
@@ -567,28 +612,22 @@ if page == 'Client more informations':
             
             
             with st.container():
-                col1, col2 = st.columns(2)
-                with col1:
-                    data_client_value = data.loc[data['SK_ID_CURR'] == client_id, features].values
-                    data_client_target = data.loc[data['SK_ID_CURR'] == client_id, 'TARGET'].values
+                data_client_value = data.loc[data['SK_ID_CURR'] == client_id, features].values
+                data_client_target = data.loc[data['SK_ID_CURR'] == client_id, 'TARGET'].values
 
-                    # Generate distribution data
-                    hist, edges = np.histogram(data.loc[:, features].dropna(), bins=20)
-                    hist_source_df = pd.DataFrame({"edges_left": edges[:-1], "edges_right": edges[1:], "hist":hist})
-                    max_histogram = hist_source_df["hist"].max()
-                    client_line = pd.DataFrame({"x": [data_client_value, data_client_value],
-                                                "y": [0, max_histogram]})
-                    # Pass dict instead of ColumnDataSource for Plotly
-                    hist_source = hist_source_df.to_dict('list')
-                    plot = plot_feature_distrib(friendly_name,
-                                                client_line,
-                                                hist_source,
-                                                data_client_value,
-                                                max_histogram)
+                # Generate distribution data
+                hist, edges = np.histogram(data.loc[:, features].dropna(), bins=20)
+                hist_source_df = pd.DataFrame({"edges_left": edges[:-1], "edges_right": edges[1:], "hist":hist})
+                max_histogram = hist_source_df["hist"].max()
+                client_line = pd.DataFrame({"x": [data_client_value, data_client_value],
+                                            "y": [0, max_histogram]})
+                hist_source = hist_source_df.to_dict('list')
+
+                if is_mobile:
+                    # Stack plots vertically
+                    plot = plot_feature_distrib(friendly_name, client_line, hist_source, data_client_value, max_histogram)
                     st.plotly_chart(plot, use_container_width=True)
-                
-                with col2:
-                    # Create box plot
+
                     fig = px.box(data, x='TARGET', y=features, points="outliers", color='TARGET', height=580)
                     fig.update_traces(quartilemethod="inclusive")
                     fig.add_trace(go.Scatter(x=data_client_target,
@@ -597,13 +636,30 @@ if page == 'Client more informations':
                                             marker=dict(size=10),
                                             showlegend=False,
                                             name='client'))
-                    # Update axis labels with friendly names
                     fig.update_layout(
                         yaxis_title=friendly_name,
                         xaxis_title='Default status (0=No, 1=Yes)'
                     )
-                    
-                    st.plotly_chart(fig, use_container_width=True) 
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        plot = plot_feature_distrib(friendly_name, client_line, hist_source, data_client_value, max_histogram)
+                        st.plotly_chart(plot, use_container_width=True)
+                    with col2:
+                        fig = px.box(data, x='TARGET', y=features, points="outliers", color='TARGET', height=580)
+                        fig.update_traces(quartilemethod="inclusive")
+                        fig.add_trace(go.Scatter(x=data_client_target,
+                                                y=data_client_value,
+                                                mode='markers',
+                                                marker=dict(size=10),
+                                                showlegend=False,
+                                                name='client'))
+                        fig.update_layout(
+                            yaxis_title=friendly_name,
+                            xaxis_title='Default status (0=No, 1=Yes)'
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
 
                     # Feature description card
             st.markdown(f"""
