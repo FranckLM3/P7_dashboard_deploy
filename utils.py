@@ -1,6 +1,7 @@
 import os
 import pickle
 import dill
+import joblib
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -14,23 +15,47 @@ def read_df(path):
 
 
 def read_pickle(path):
-    """Try to load an object with pickle or dill. Accept `path` with or without extension."""
-    # allow passing directory-like names saved without extension
-    if not os.path.exists(path) and os.path.exists(path + '.pkl'):
-        path = path + '.pkl'
-    if not os.path.exists(path):
+    """
+    Load a serialized Python object from disk.
+
+    - Accepts a path with or without extension
+    - Tries common extensions: .pkl, .pickle, .joblib
+    - Tries loaders in order: dill -> pickle -> joblib
+
+    This makes it robust to artifacts saved with either pickle/dill or joblib.
+    """
+    # Resolve actual path: if given path doesn't exist, try common extensions.
+    resolved_path = path
+    if not os.path.exists(resolved_path):
+        for ext in ('.pkl', '.pickle', '.joblib'):
+            candidate = f"{path}{ext}"
+            if os.path.exists(candidate):
+                resolved_path = candidate
+                break
+    if not os.path.exists(resolved_path):
         raise FileNotFoundError(f"Pickle path not found: {path}")
 
-    # Try dill first (more robust), else try pickle
-    with open(path, 'rb') as f:
-        try:
+    # Attempt to load with dill, then pickle, then joblib
+    # Note: joblib can load many pickle files, but we keep it last to allow dill-specific objects first
+    errors = []
+    try:
+        with open(resolved_path, 'rb') as f:
             return dill.load(f)
-        except Exception:
-            f.seek(0)
-            try:
-                return pickle.load(f)
-            except Exception as exc:
-                raise RuntimeError(f"Failed to load pickle/dill from {path}: {exc}")
+    except Exception as e:
+        errors.append(f"dill: {e}")
+    try:
+        with open(resolved_path, 'rb') as f:
+            return pickle.load(f)
+    except Exception as e:
+        errors.append(f"pickle: {e}")
+    try:
+        return joblib.load(resolved_path)
+    except Exception as e:
+        errors.append(f"joblib: {e}")
+
+    raise RuntimeError(
+        f"Failed to load object from {resolved_path}. Tried dill, pickle, joblib. Errors: {errors}"
+    )
 
 
 def predict_with_api_or_local(client_id, X_df, api_url=None, classifier=None, preprocessor=None, timeout=5):
