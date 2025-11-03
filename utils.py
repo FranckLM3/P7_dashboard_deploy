@@ -58,6 +58,46 @@ def read_pickle(path):
     )
 
 
+def load_shap_explainer(path, classifier, save_rebuilt: bool = False):
+    """
+    Load a SHAP TreeExplainer from a serialized artifact.
+    If loading fails due to environment/class version mismatch, rebuild the explainer
+    from the provided classifier. Optionally persist the rebuilt explainer.
+
+    Args:
+        path: Base path (with or without extension) to the explainer artifact.
+        classifier: Fitted model used to rebuild the TreeExplainer if needed.
+        save_rebuilt: If True, save the rebuilt explainer back to disk using dill.
+
+    Returns:
+        A SHAP TreeExplainer instance.
+    """
+    try:
+        explainer = read_pickle(path)
+        return explainer
+    except Exception as load_err:
+        # Rebuild from classifier to avoid pickling issues across SHAP versions
+        try:
+            import shap  # local import to ensure availability
+            explainer = shap.TreeExplainer(classifier)
+            if save_rebuilt:
+                # Save using dill to a .pkl alongside original base path
+                out_path = path
+                if not os.path.exists(out_path) and not out_path.endswith(('.pkl', '.pickle', '.joblib')):
+                    out_path = f"{path}.pkl"
+                try:
+                    with open(out_path, 'wb') as f:
+                        dill.dump(explainer, f)
+                except Exception:
+                    # Saving is best-effort; ignore persistence errors
+                    pass
+            return explainer
+        except Exception as rebuild_err:
+            raise RuntimeError(
+                f"Failed to load or rebuild SHAP explainer from {path}. Load error: {load_err} | Rebuild error: {rebuild_err}"
+            )
+
+
 def predict_with_api_or_local(client_id, X_df, api_url=None, classifier=None, preprocessor=None, timeout=5):
     """
     Try to get prediction from API. If it fails, and classifier+preprocessor are provided,

@@ -523,10 +523,10 @@ if page == 'Check credit score':
             st.markdown("Understanding which factors influenced the prediction")
             
             with st.spinner('Analyzing feature importance...'):
-                    
                 feats = read_pickle('ressource/feats')
                 mapping = {f"Column_{i}": name for i, name in enumerate(df.columns)}
-                SHAP_explainer = read_pickle('ressource/shap_explainer')
+                # Load SHAP explainer via robust utils fallback
+                SHAP_explainer = load_shap_explainer('ressource/shap_explainer', clf)
 
                 # SHAP explainer expects preprocessed input; transform X for explanation only
                 X_trans = pipeline[:-1].transform(X)
