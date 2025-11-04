@@ -165,7 +165,7 @@ def plot_gauge(prediction_default):
         domain = {'x': [0, 1], 'y': [0, 1]},
         value = prediction_default,
         mode = "gauge+number+delta",
-        title = {'text': "Risk of Default (%)", 'font': {'size': 20, 'color': '#2c3e50'}},
+        title = {'text': "Risque de défaut (%)", 'font': {'size': 20, 'color': '#2c3e50'}},
         number = {'font': {'size': 40, 'color': '#2c3e50'}},
         gauge = {
             'axis': {
@@ -276,13 +276,13 @@ def plot_important_features(shap_explained, most_important_features):
     # Update layout
     fig.update_layout(
         title={
-            'text': "Most important features in algorithm decision",
+            'text': "Facteurs les plus importants dans la décision de l'algorithme",
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 16, 'color': '#2c3e50'}
         },
-        xaxis_title="Impact on model output",
-        yaxis_title="Client's information",
+        xaxis_title="Impact sur la sortie du modèle",
+        yaxis_title="Informations du client",
         height=500,
         margin=dict(l=200, r=50, t=80, b=50),
         hovermode='closest',
@@ -324,7 +324,7 @@ def plot_feature_distrib(feature_distrib, client_line, hist_source, data_client_
             opacity=0.7,
             line=dict(color='white', width=1)
         ),
-        hovertemplate='<b>Range:</b> %{customdata[0]:.2f} to %{customdata[1]:.2f}<br><b>Count:</b> %{y}<extra></extra>',
+        hovertemplate='<b>Plage :</b> %{customdata[0]:.2f} à %{customdata[1]:.2f}<br><b>Nombre :</b> %{y}<extra></extra>',
         customdata=[[hist_df['edges_left'][i], hist_df['edges_right'][i]] 
                     for i in range(len(hist_df['edges_left']))],
         name='Distribution'
@@ -336,15 +336,15 @@ def plot_feature_distrib(feature_distrib, client_line, hist_source, data_client_
         y=[0, max_histogram],
         mode='lines',
         line=dict(color='orange', width=3, dash='dash'),
-        name="Client's value",
-        hovertemplate='<b>Client\'s value:</b> %{x:.2f}<extra></extra>'
+        name="Valeur du client",
+        hovertemplate='<b>Valeur du client :</b> %{x:.2f}<extra></extra>'
     ))
     
     # Add annotation for client's value
     fig.add_annotation(
         x=data_client_value[0],
         y=max_histogram * 1.05,
-        text="Client's value",
+        text="Valeur du client",
         showarrow=True,
         arrowhead=2,
         arrowcolor='orange',
@@ -357,13 +357,13 @@ def plot_feature_distrib(feature_distrib, client_line, hist_source, data_client_
     # Update layout
     fig.update_layout(
         title={
-            'text': f"Client value for {feature_distrib} compared to other clients",
+            'text': f"Valeur du client pour {feature_distrib} comparée aux autres clients",
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 14, 'color': '#2c3e50'}
         },
         xaxis_title=feature_distrib,
-        yaxis_title="Number of clients",
+        yaxis_title="Nombre de clients",
         height=580,
         showlegend=True,
         hovermode='closest',

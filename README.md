@@ -6,7 +6,8 @@ Interactive Streamlit dashboard for credit scoring analysis and client evaluatio
 
 User-friendly web application for loan officers to evaluate client credit risk. Displays predictions, feature importance, and client comparisons with visual analytics.
 
-**Live Dashboard:** https://francklm3-p7-dashboard-deploy-dashboard-67h1jz.streamlitapp.com/
+**Dashboard :** https://francklm3-p7-dashboard-deploy-dashboard-67h1jz.streamlitapp.com/
+**API :** https://credit-score-api-572900860091.europe-west1.run.app/docs
 
 ## Features
 

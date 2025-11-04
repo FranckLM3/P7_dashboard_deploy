@@ -222,22 +222,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Header
-st.markdown('<h1 class="main-header">Credit Risk Assessment Dashboard</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Credit scoring and risk analysis platform</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">🏦 Dashboard Scoring Crédit</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Évaluation du risque de crédit avec modèles prédictifs</p>', unsafe_allow_html=True)
 
 placeholder = st.empty()
 placeholder_bis = st.empty()
 return_button = st.empty()
+
 #----------------------------------------------------------------------------------#
 #                                 LOADING DATA                                     #
 #----------------------------------------------------------------------------------#
 
 df = _read_df_cached('data/dataset_sample.csv')
-
 df = df.replace([np.inf, -np.inf], np.nan)
 
 # Load ML models
-with st.spinner('🤖 Loading models...'):
+with st.spinner('⚙️ Chargement des modèles...'):
     import joblib
     pipeline = joblib.load('ressource/pipeline.joblib')
     preprocessor = pipeline[:-1]  # All steps except classifier
@@ -246,49 +246,162 @@ with st.spinner('🤖 Loading models...'):
 #----------------------------------------------------------------------------------#
 #                              SIDEBAR                                             #
 #----------------------------------------------------------------------------------#
-st.sidebar.markdown("## Client Selection")
+st.sidebar.markdown("## 👤 Sélection Client")
+st.sidebar.markdown("*Choisissez un ID client pour commencer l'analyse*")
+
 all_clients_id = df['SK_ID_CURR'].unique()
 
-# Client selector with search
+# Improved client selector with better UX
+st.sidebar.markdown("### 🔍 ID Client")
+
+# Initialize session state for client selection
+if 'selected_client' not in st.session_state:
+    st.session_state.selected_client = ''
+
+# Add some example client IDs for guidance
+st.sidebar.markdown("### 💡 Client d'exemple")
+if st.sidebar.button("👤 Client #162473", key="example_162473", help="Charger le client d'exemple", use_container_width=True, type="secondary"):
+    st.session_state.selected_client = 162473
+    st.rerun()
+
 client_id = st.sidebar.selectbox(
-    "Client",
+    "Tapez ou sélectionnez un ID client",
     options=[''] + list(all_clients_id),
-    format_func=lambda x: "Choose a client..." if x == '' else f"Client #{int(x)}",
-    label_visibility="collapsed"
+    format_func=lambda x: "🔍 Choisissez un client..." if x == '' else f"👤 Client #{int(x)}",
+    label_visibility="collapsed",
+    help="Sélectionnez un ID client dans la liste pour voir son profil de risque",
+    index=0 if st.session_state.selected_client == '' else list(all_clients_id).index(st.session_state.selected_client) + 1 if st.session_state.selected_client in all_clients_id else 0
 )
+
+# Update session state when user manually selects a client
+if client_id != st.session_state.selected_client:
+    st.session_state.selected_client = client_id
+
+# Analysis section - moved up for better visibility
+if client_id != '':
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🚀 Analyse")
+    
+    # Type of analysis selection
+    page = st.sidebar.radio(
+        "Type d'analyse",
+        ['Évaluation Risque Crédit', '📊 Informations Détaillées Client'],
+        label_visibility="collapsed",
+        help="Choisissez le type d'analyse que vous souhaitez effectuer"
+    )
+    
+    if page == 'Évaluation Risque Crédit':
+        st.sidebar.markdown("**Cliquez pour lancer l'analyse :**")
+        run_button = st.sidebar.button(
+            '🚀 Analyser le Risque Crédit', 
+            type="primary", 
+            use_container_width=True,
+            help="Lance l'analyse complète avec score de risque et explications"
+        )
+    else:
+        run_button = False
+else:
+    page = 'Évaluation Risque Crédit'
+    run_button = False
 
 if client_id == '':
     with placeholder.container():
-        # Welcome message
+        # Enhanced welcome page with clear instructions
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                    padding: 2rem; border-radius: 15px; color: white; margin: 2rem 0;">
+            <h2 style="text-align: center; margin-bottom: 1rem;">🎯 Bienvenue dans le Dashboard Scoring Crédit</h2>
+            <p style="text-align: center; font-size: 1.1rem;">
+                Évaluez le risque de crédit de vos clients en quelques clics avec notre système d'évaluation avancé
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Clear instructions
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.info("""
-                ### Welcome to the Credit Risk Dashboard
-                
-                This platform helps you evaluate credit applications using advanced machine learning.
-                
-                **Features:**
-                - Real-time credit risk assessment
-                - Interactive data visualization
-                - Models predictions
-                - Detailed client analytics
-                
-                **Get started:** Select a client from the sidebar to begin the analysis.
+            st.markdown("""
+            ### 🚀 Comment utiliser ce dashboard ?
+            
+            **Étape 1 :** 👈 Sélectionnez un client dans la barre latérale
+            - Utilisez la liste déroulante ou les exemples proposés
+            - Plus de 300 000 clients disponibles dans la base
+            
+            **Étape 2 :** 📊 Analysez les résultats automatiquement générés
+            - Score de risque avec jauge visuelle
+            - Recommandation d'acceptation/refus
+            - Explications détaillées (pourquoi cette décision ?)
+            
+            **Étape 3 :** 🔍 Explorez les détails
+            - Profil client complet
+            - Comparaison avec les autres clients
+            - Graphiques interactifs
             """)
             
+        # Feature highlights
+        st.markdown("---")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown("""
+            <div style="text-align: center; padding: 1rem; background-color: #f0f2f6; border-radius: 10px; color: #333;">
+                <h3>⚙️</h3>
+                <strong>Analyse Avancée</strong><br>
+                <small>Modèle LightGBM optimisé</small>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown("""
+            <div style="text-align: center; padding: 1rem; background-color: #f0f2f6; border-radius: 10px; color: #333;">
+                <h3>⚡</h3>
+                <strong>Temps Réel</strong><br>
+                <small>Prédictions instantanées</small>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col3:
+            st.markdown("""
+            <div style="text-align: center; padding: 1rem; background-color: #f0f2f6; border-radius: 10px; color: #333;">
+                <h3>🔍</h3>
+                <strong>Explicable</strong><br>
+                <small>Transparence totale</small>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col4:
+            st.markdown("""
+            <div style="text-align: center; padding: 1rem; background-color: #f0f2f6; border-radius: 10px; color: #333;">
+                <h3>📈</h3>
+                <strong>Visualisations</strong><br>
+                <small>Graphiques interactifs</small>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        # Quick start section
+        st.markdown("---")
+        st.markdown("### ⚡ Démarrage rapide")
+        st.info("""
+        **Pressé ?** Utilisez le client d'exemple dans la barre latérale pour voir 
+        immédiatement le dashboard en action ! 
+        
+        **Client recommandé :**
+        - **Client #162473** : Profil avec explications détaillées pour tester le dashboard
+        """)
+    
     st.stop()
 
 else:
     data_client= df[df["SK_ID_CURR"]==client_id]
     client_index = data_client.index[0]
 
-    placeholder.write(f"You've selected client #{client_id}.")
+    placeholder.info(f"✅ **Client #{client_id} sélectionné !** 👈 Cliquez maintenant sur le bouton **'🚀 Analyser le Risque Crédit'** dans la barre latérale pour lancer l'analyse.")
 
     gender = data_client.loc[client_index, "CODE_GENDER"]
     if gender == 1:
-        gender = 'Male'
+        gender = 'Homme'
     else:
-        gender = 'Female'
+        gender = 'Femme'
 
     family_status = data_client.loc[client_index, "NAME_FAMILY_STATUS"]
     loan_type = data_client.loc[client_index, "NAME_CONTRACT_TYPE"]
@@ -324,63 +437,73 @@ else:
     
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        st.metric("👤 Gender", gender)
-        st.metric("🎂 Age", f"{age} yrs")
+        st.metric("👤 Sexe", gender)
+        st.metric("🎂 Âge", f"{age} ans")
     with col2:
-        st.metric("👨‍👩‍👧‍👦 Family", int(round(fam_members)))
-        st.metric("👶 Children", int(round(childs)))
+        st.metric("👨‍👩‍👧‍👦 Famille", int(round(fam_members)))
+        st.metric("👶 Enfants", int(round(childs)))
     
-    with st.sidebar.expander("📚 More Details", expanded=False):
-        st.write(f"**Education:** {education}")
-        st.write(f"**Marital Status:** {family_status}")
+    with st.sidebar.expander("📚 Plus de Détails", expanded=False):
+        st.write(f"**Éducation :** {education}")
+        st.write(f"**Statut Marital :** {family_status}")
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 💼 Professional Information")
+    st.sidebar.markdown("### 💼 Informations Professionnelles")
     
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        st.metric("💵 Income", f"${round(income_per_person):,}")
+        st.metric("💵 Revenus", f"${round(income_per_person):,}")
     with col2:
-        st.metric("📅 Experience", years_work if isinstance(years_work, str) else f"{years_work} yrs")
+        st.metric("📅 Expérience", years_work if isinstance(years_work, str) else f"{years_work} ans")
     
-    with st.sidebar.expander("💼 Work Details", expanded=False):
-        st.write(f"**Occupation:** {work}")
-        st.write(f"**Type:** {occupation_type if occupation_type else 'N/A'}")
+    with st.sidebar.expander("💼 Détails Travail", expanded=False):
+        st.write(f"**Profession :** {work}")
+        st.write(f"**Type :** {occupation_type if occupation_type else 'N/A'}")
     
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 💳 Credit Information")
+    st.sidebar.markdown("### 💳 Informations Crédit")
     
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        st.metric("💰 Credit", f"${round(credit):,}")
+        st.metric("💰 Crédit", f"${round(credit):,}")
     with col2:
-        st.metric("📊 Annuity", f"${round(annuity):,}")
+        st.metric("📊 Annuité", f"${round(annuity):,}")
     
-    st.sidebar.metric("📈 Payment Rate", f"{payment_rate:.1%}")
+    st.sidebar.metric("📈 Taux de Paiement", f"{payment_rate:.1%}")
     
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### Navigation")
-    
-    page = st.sidebar.radio(
-        "Select Analysis Type",
-        ['Check credit score', 'Client more informations'],
-        label_visibility="collapsed"
-    )
-    
-    if page == 'Check credit score':
-        run_button = st.sidebar.button('Run Credit Analysis', type="primary", use_container_width=True)
-    else:
-        run_button = False
-
     # Layout preference for better small-screen experience
     is_mobile = st.sidebar.toggle(
-        "📱 Mobile layout",
+        "📱 Mode mobile",
         value=False,
-        help="Stack sections and enlarge spacing for small screens"
+        help="Optimise l'affichage pour les petits écrans"
     )
 
+    # Help section
+    st.sidebar.markdown("---")
+    with st.sidebar.expander("❓ Aide", expanded=False):
+        st.markdown("""
+        **Guide rapide :**
+        
+        1️⃣ **Sélectionnez** un client dans la liste
+        
+        2️⃣ **Choisissez** le type d'analyse :
+        - ⚙️ **Évaluation Risque** : Score + décision
+        - 📊 **Infos Détaillées** : Profil complet
+        
+        3️⃣ **Cliquez** sur "Analyser le Risque"
+        
+        **Comprendre les résultats :**
+        - 🟢 **< 30%** : Risque faible → Accepter
+        - 🟡 **30-50%** : Risque moyen → Examiner  
+        - 🔴 **> 50%** : Risque élevé → Refuser
+        
+        **Barres d'explication :**
+        - 🔴 Rouges : Augmentent le risque
+        - 🟢 Vertes : Diminuent le risque
+        """)
 
-if page == 'Check credit score':
+
+if page == 'Évaluation Risque Crédit':
     if run_button:
         #----------------------------------------------------------------------------------#
         #                                 PREPROCESSING                                    #
@@ -395,52 +518,52 @@ if page == 'Check credit score':
         #----------------------------------------------------------------------------------#
         #                           PREDICT, WITH API                                      #
         #----------------------------------------------------------------------------------#
-        with st.status("Model Analysis in Progress...", expanded=True) as status:
-            st.write("Connecting to API...")
+        with st.status("Analyse en cours...", expanded=True) as status:
+            st.write("🔗 Connexion à l'API de prédiction...")
             # API is the default source of truth; make it configurable via env var
             url_api = os.getenv('CREDIT_SCORE_API_URL', 'https://credit-score-api-572900860091.europe-west1.run.app')
-            st.write("Processing credit data...")
+            st.write("Traitement des données crédit...")
             # Use helper which tries API first, then falls back to local classifier
             prob = predict_with_api_or_local(client_id,
                                             X,
                                             api_url=url_api,
                                             classifier=clf,
                                             preprocessor=preprocessor)
-            st.write("Analysis complete!")
-            status.update(label="Analysis Complete!", state="complete", expanded=False)
+            st.write("Analyse terminée !")
+            status.update(label="Analyse Terminée !", state="complete", expanded=False)
         
         #----------------------------------------------------------------------------------#
         #                           RESULTS DISPLAY                                        #
         #----------------------------------------------------------------------------------#
         with placeholder.container():
             # Header for results
-            st.markdown("## 📊 Credit Risk Analysis Results")
+            st.markdown("## 📊 Résultats de l'Analyse du Risque Crédit")
             st.markdown("---")
             
             risk_score = prob * 100
             
             # Determine risk level and styling
             if risk_score < 30:
-                risk_level = "Low Risk"
+                risk_level = "Risque Faible"
                 risk_icon = "✅"
                 risk_color = "#28a745"
-                decision = "APPROVED"
+                decision = "ACCEPTÉ"
                 decision_icon = "✅"
-                recommendation = "We recommend ACCEPTING this client's loan application."
+                recommendation = "Nous recommandons d'ACCEPTER la demande de crédit de ce client."
             elif risk_score <= 50:
-                risk_level = "Medium Risk"
+                risk_level = "Risque Modéré"
                 risk_icon = "⚠️"
                 risk_color = "#ffc107"
-                decision = "REVIEW NEEDED"
+                decision = "EXAMEN REQUIS"
                 decision_icon = "⚠️"
-                recommendation = "Client's default risk is moderate. We recommend reviewing additional factors before making a decision."
+                recommendation = "Le risque de défaut du client est modéré. Nous recommandons d'examiner des facteurs supplémentaires avant de prendre une décision."
             else:
-                risk_level = "High Risk"
+                risk_level = "Risque Élevé"
                 risk_icon = "❌"
                 risk_color = "#dc3545"
-                decision = "REJECTED"
+                decision = "REFUSÉ"
                 decision_icon = "❌"
-                recommendation = "We recommend  REJECTING this client's loan application due to high default risk."
+                recommendation = "Nous recommandons de REFUSER la demande de crédit de ce client en raison du risque de défaut élevé."
             
             # Main results: desktop uses columns; mobile stacks sections
             if is_mobile:
@@ -510,19 +633,22 @@ if page == 'Check credit score':
             
             # Risk thresholds explanation
             st.info("""
-                **Decision Guidelines:**
-                - **< 30%**: Low risk → Loan approval recommended
-                - **30-50%**: Medium risk → Additional review suggested
-                - **> 50%**: High risk → Loan rejection recommended
+                **Seuils de Décision :**
+                - **< 30%** : Risque faible → Approbation de crédit recommandée
+                - **30-50%** : Risque modéré → Examen supplémentaire suggéré
+                - **> 50%** : Risque élevé → Refus de crédit recommandé
                 
-                💡 *Use the "Client more information" tab for detailed analysis to support your decision.*
+                💡 *Utilisez l'onglet "📊 Informations Détaillées Client" pour une analyse détaillée qui vous aidera dans votre décision.*
             """)
             
             # SHAP Analysis Section
-            st.markdown("## Model Explanation")
-            st.markdown("Understanding which factors influenced the prediction")
+            st.markdown("## 🔍 Explication de la Décision")
+            st.markdown("""
+            **Pourquoi cette décision ?** Notre modèle d'IA analyse de nombreux facteurs. 
+            Voici les éléments qui ont le plus influencé le score de ce client :
+            """)
             
-            with st.spinner('Analyzing feature importance...'):
+            with st.spinner('🧠 Analyse des facteurs d\'influence...'):
                 feats = read_pickle('ressource/feats')
                 mapping = {f"Column_{i}": name for i, name in enumerate(df.columns)}
                 # Load SHAP explainer via robust utils fallback
@@ -550,19 +676,44 @@ if page == 'Check credit score':
                 
                 explained_chart = plot_important_features(shap_explained, most_important_features)
 
-            # SHAP Visualization
-            st.markdown("### 📊 Feature Importance Analysis")
+            # SHAP Visualization with better explanation
+            st.markdown("### 📊 Facteurs d'influence (Top 10)")
             st.plotly_chart(explained_chart, use_container_width=True)
-            st.caption('🔴 Red bars indicate features increasing default risk | 🟢 Green bars indicate features decreasing default risk')
+            
+            # Color-coded explanation
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("""
+                <div style='padding: 1rem; background-color: #f8d7da; border-radius: 8px; border-left: 4px solid #dc3545;'>
+                    <strong style='color: #721c24;'>🔴 Barres rouges</strong><br>
+                    <small>Facteurs qui <strong>augmentent</strong> le risque de défaut</small>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with col2:
+                st.markdown("""
+                <div style='padding: 1rem; background-color: #d4edda; border-radius: 8px; border-left: 4px solid #28a745;'>
+                    <strong style='color: #155724;'>🟢 Barres vertes</strong><br>
+                    <small>Facteurs qui <strong>diminuent</strong> le risque de défaut</small>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            st.markdown("---")
+            st.success("""
+            💡 **Comment interpréter ?**
+            - Plus la barre est longue, plus le facteur influence la décision
+            - Les facteurs sont classés par ordre d'importance
+            - Utilisez ces informations pour expliquer la décision au client
+            """)
 
-if page == 'Client more informations':
+if page == '📊 Informations Détaillées Client':
     description = pd.read_csv('data/HomeCredit_columns_description.csv',
                                     encoding='ISO-8859-1',
                                     )
     
     # Display client application data analysis
-    st.markdown("### 📊 Client Application Data Analysis")
-    st.info("💡 Explore and compare the client's application features with the overall population")
+    st.markdown("### 📊 Analyse Approfondie des Données Client")
+    st.info("💡 Explorez et comparez les caractéristiques de ce client avec l'ensemble de la population")
     
     st.divider()
     
