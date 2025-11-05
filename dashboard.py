@@ -206,7 +206,7 @@ def is_mobile_device():
         return False
 
 # Block mobile access
-if not is_mobile_device():
+if is_mobile_device():
     st.markdown("""
     <div 
         <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
