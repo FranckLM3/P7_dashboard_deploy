@@ -379,10 +379,12 @@ if client_id == '':
                 margin: 0.5rem 0;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                 text-align: center;
-                height: 200px;
+                min-height: 200px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                width: 100%;
+                box-sizing: border-box;
             ">
                 <div style="font-size: 2rem; margin-bottom: 0.8rem;">📋</div>
                 <h4 style="color: #333; margin-bottom: 0.8rem;">Étape 1 : Choisir un client</h4>
@@ -404,10 +406,12 @@ if client_id == '':
                 margin: 0.5rem 0;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                 text-align: center;
-                height: 200px;
+                min-height: 200px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                width: 100%;
+                box-sizing: border-box;
             ">
                 <div style="font-size: 2rem; margin-bottom: 0.8rem;">👤</div>
                 <h4 style="color: #333; margin-bottom: 0.8rem;">Étape 2 : Consulter le profil</h4>
@@ -429,10 +433,12 @@ if client_id == '':
                 margin: 0.5rem 0;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.1);
                 text-align: center;
-                height: 200px;
+                min-height: 200px;
                 display: flex;
                 flex-direction: column;
                 justify-content: center;
+                width: 100%;
+                box-sizing: border-box;
             ">
                 <div style="font-size: 2rem; margin-bottom: 0.8rem;">📊</div>
                 <h4 style="color: #333; margin-bottom: 0.8rem;">Étape 3 : Explorer les détails</h4>
