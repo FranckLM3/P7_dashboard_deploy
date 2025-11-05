@@ -206,25 +206,9 @@ def is_mobile_device():
         return False
 
 # Block mobile access
-if is_mobile_device():
+if not is_mobile_device():
     st.markdown("""
-    <div style="
-        display: flex;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        text-align: center;
-        padding: 2rem;
-        z-index: 9999;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        font-family: Arial, sans-serif;
-    ">
+    <div 
         <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
         <h2 style="margin-bottom: 1rem;">Dashboard non compatible mobile</h2>
         <p style="margin-bottom: 1rem;">Ce dashboard est optimisé pour ordinateur et tablette.</p>
