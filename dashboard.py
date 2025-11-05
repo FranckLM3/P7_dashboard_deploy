@@ -584,22 +584,21 @@ else:
     tab1, tab2 = st.tabs(["🎯 Risque de crédit", "📊 Analyse détaillée"])
     
     with tab1:
-        # Analyse automatique
+        # Analyse automatique avec spinner
         
-        # Analyse automatique sans bouton
-        
-        X = data_client.drop(['TARGET', 'SK_ID_CURR'], axis=1)
-        y = data_client['TARGET']
+        with st.spinner('🔄 Analyse du risque de crédit en cours...'):
+            X = data_client.drop(['TARGET', 'SK_ID_CURR'], axis=1)
+            y = data_client['TARGET']
 
-        # Do not transform X here — the helper will call the API first.
-        # If local fallback is used, helper will call preprocessor.transform.
+            # Do not transform X here — the helper will call the API first.
+            # If local fallback is used, helper will call preprocessor.transform.
 
-        url_api = os.getenv('CREDIT_SCORE_API_URL', 'https://credit-score-api-572900860091.europe-west1.run.app')
-        prob = predict_with_api_or_local(client_id,
-                                        X,
-                                        api_url=url_api,
-                                        classifier=clf,
-                                        preprocessor=preprocessor)
+            url_api = os.getenv('CREDIT_SCORE_API_URL', 'https://credit-score-api-572900860091.europe-west1.run.app')
+            prob = predict_with_api_or_local(client_id,
+                                            X,
+                                            api_url=url_api,
+                                            classifier=clf,
+                                            preprocessor=preprocessor)
         
         #----------------------------------------------------------------------------------#
         #                           RESULTS DISPLAY                                        #
