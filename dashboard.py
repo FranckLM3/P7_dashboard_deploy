@@ -353,10 +353,7 @@ if client_id == '':
     run_button = False
 
 if client_id == '':
-    with placeholder.container():
-        # Header principal uniquement sur la page d'accueil
-        st.markdown('<h1 class="main-header">Dashboard Scoring Crédit</h1>', unsafe_allow_html=True)
-        
+    with placeholder.container():       
         # Enhanced welcome page with clear instructions
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
