@@ -194,102 +194,104 @@ st.set_page_config(
 )
 
 # Check for mobile device and block access if needed
-mobile_check_js = """
+mobile_block_html = """
+<div id="mobile-detector" style="display: none;">
+    <div id="mobile-warning" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-align: center;
+        padding: 2rem;
+        font-family: Arial, sans-serif;
+        z-index: 99999;
+    ">
+        <div style="
+            background: rgba(255,255,255,0.1);
+            padding: 3rem;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            max-width: 400px;
+        ">
+            <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
+            <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">Dashboard Non Compatible Mobile</h2>
+            <p style="margin-bottom: 2rem; font-size: 1rem; line-height: 1.6;">
+                Ce dashboard de scoring crédit est optimisé pour les ordinateurs de bureau et tablettes.
+                Pour une expérience optimale, veuillez accéder au site depuis :
+            </p>
+            <ul style="text-align: left; margin-bottom: 2rem; font-size: 0.9rem; list-style-type: none; padding: 0;">
+                <li style="margin-bottom: 0.5rem;">💻 Un ordinateur de bureau</li>
+                <li style="margin-bottom: 0.5rem;">💻 Un ordinateur portable</li>
+                <li style="margin-bottom: 0.5rem;">📱 Une tablette en mode paysage</li>
+            </ul>
+            <p style="font-size: 0.8rem; opacity: 0.8;">
+                Écran minimum requis : 768px de largeur
+            </p>
+        </div>
+    </div>
+</div>
+
 <script>
-function checkMobileAndRedirect() {
+function checkAndShowMobileWarning() {
     const isMobile = window.innerWidth <= 768 || 
                     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
+    const mobileWarning = document.getElementById('mobile-warning');
+    const stApp = document.querySelector('[data-testid="stApp"]');
+    const mainContent = document.querySelector('.main');
+    
     if (isMobile) {
-        // Hide the main app content immediately
-        const appContainer = document.querySelector('.main');
-        if (appContainer) {
-            appContainer.style.display = 'none';
-        }
+        console.log('Mobile détecté, affichage de l\'avertissement');
         
-        const stApp = document.querySelector('[data-testid="stApp"]');
-        if (stApp) {
-            stApp.style.display = 'none';
-        }
+        // Hide Streamlit content
+        if (stApp) stApp.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'none';
         
-        // Create and show mobile warning
-        let mobileWarning = document.getElementById('mobile-warning');
-        if (!mobileWarning) {
-            mobileWarning = document.createElement('div');
-            mobileWarning.id = 'mobile-warning';
-            mobileWarning.innerHTML = `
-                <div style="
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100vw;
-                    height: 100vh;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    text-align: center;
-                    padding: 2rem;
-                    font-family: Arial, sans-serif;
-                    z-index: 9999;
-                ">
-                    <div style="
-                        background: rgba(255,255,255,0.1);
-                        padding: 3rem;
-                        border-radius: 20px;
-                        backdrop-filter: blur(10px);
-                        border: 1px solid rgba(255,255,255,0.2);
-                        max-width: 400px;
-                    ">
-                        <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
-                        <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">Dashboard Non Compatible Mobile</h2>
-                        <p style="margin-bottom: 2rem; font-size: 1rem; line-height: 1.6;">
-                            Ce dashboard de scoring crédit est optimisé pour les ordinateurs de bureau et tablettes.
-                            Pour une expérience optimale, veuillez accéder au site depuis :
-                        </p>
-                        <ul style="text-align: left; margin-bottom: 2rem; font-size: 0.9rem; list-style-type: none; padding: 0;">
-                            <li style="margin-bottom: 0.5rem;">💻 Un ordinateur de bureau</li>
-                            <li style="margin-bottom: 0.5rem;">💻 Un ordinateur portable</li>
-                            <li style="margin-bottom: 0.5rem;">📱 Une tablette en mode paysage</li>
-                        </ul>
-                        <p style="font-size: 0.8rem; opacity: 0.8;">
-                            Écran minimum requis : 768px de largeur
-                        </p>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(mobileWarning);
-        }
-        return false;
-    } else {
-        // Remove mobile warning if exists
-        const mobileWarning = document.getElementById('mobile-warning');
+        // Show mobile warning
         if (mobileWarning) {
-            mobileWarning.remove();
+            mobileWarning.style.display = 'flex';
+        }
+    } else {
+        console.log('Desktop détecté');
+        
+        // Show Streamlit content
+        if (stApp) stApp.style.display = 'block';
+        if (mainContent) mainContent.style.display = 'block';
+        
+        // Hide mobile warning
+        if (mobileWarning) {
+            mobileWarning.style.display = 'none';
         }
     }
-    return true;
 }
 
-// Check immediately
-checkMobileAndRedirect();
+// Test immédiat
+console.log('Test détection mobile - largeur:', window.innerWidth);
+checkAndShowMobileWarning();
 
-// Check on resize
-window.addEventListener('resize', checkMobileAndRedirect);
+// Test sur resize
+window.addEventListener('resize', function() {
+    console.log('Resize détecté - nouvelle largeur:', window.innerWidth);
+    checkAndShowMobileWarning();
+});
 
-// Check when DOM content is loaded
-document.addEventListener('DOMContentLoaded', checkMobileAndRedirect);
-
-// Check when Streamlit finishes loading
-setTimeout(checkMobileAndRedirect, 100);
-setTimeout(checkMobileAndRedirect, 500);
-setTimeout(checkMobileAndRedirect, 1000);
+// Tests répétés pour s'assurer que ça marche
+setTimeout(checkAndShowMobileWarning, 100);
+setTimeout(checkAndShowMobileWarning, 500);
+setTimeout(checkAndShowMobileWarning, 1000);
+setTimeout(checkAndShowMobileWarning, 2000);
 </script>
 """
 
-st.markdown(mobile_check_js, unsafe_allow_html=True)
+st.markdown(mobile_block_html, unsafe_allow_html=True)
 
 # Custom CSS - minimal styling
 st.markdown("""
