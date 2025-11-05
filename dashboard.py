@@ -201,62 +201,91 @@ function checkMobileAndRedirect() {
                     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (isMobile) {
-        // Hide the main app content
-        const mainContent = document.querySelector('[data-testid="stApp"]');
-        if (mainContent) {
-            mainContent.style.display = 'none';
+        // Hide the main app content immediately
+        const appContainer = document.querySelector('.main');
+        if (appContainer) {
+            appContainer.style.display = 'none';
         }
         
-        // Show mobile warning
-        document.body.innerHTML = `
-            <div style="
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                text-align: center;
-                padding: 2rem;
-                font-family: Arial, sans-serif;
-            ">
+        const stApp = document.querySelector('[data-testid="stApp"]');
+        if (stApp) {
+            stApp.style.display = 'none';
+        }
+        
+        // Create and show mobile warning
+        let mobileWarning = document.getElementById('mobile-warning');
+        if (!mobileWarning) {
+            mobileWarning = document.createElement('div');
+            mobileWarning.id = 'mobile-warning';
+            mobileWarning.innerHTML = `
                 <div style="
-                    background: rgba(255,255,255,0.1);
-                    padding: 3rem;
-                    border-radius: 20px;
-                    backdrop-filter: blur(10px);
-                    border: 1px solid rgba(255,255,255,0.2);
-                    max-width: 400px;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    text-align: center;
+                    padding: 2rem;
+                    font-family: Arial, sans-serif;
+                    z-index: 9999;
                 ">
-                    <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
-                    <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">Dashboard Non Compatible Mobile</h2>
-                    <p style="margin-bottom: 2rem; font-size: 1rem; line-height: 1.6;">
-                        Ce dashboard de scoring crédit est optimisé pour les ordinateurs de bureau et tablettes.
-                        Pour une expérience optimale, veuillez accéder au site depuis :
-                    </p>
-                    <ul style="text-align: left; margin-bottom: 2rem; font-size: 0.9rem;">
-                        <li>💻 Un ordinateur de bureau</li>
-                        <li>💻 Un ordinateur portable</li>
-                        <li>📱 Une tablette en mode paysage</li>
-                    </ul>
-                    <p style="font-size: 0.8rem; opacity: 0.8;">
-                        Écran minimum requis : 768px de largeur
-                    </p>
+                    <div style="
+                        background: rgba(255,255,255,0.1);
+                        padding: 3rem;
+                        border-radius: 20px;
+                        backdrop-filter: blur(10px);
+                        border: 1px solid rgba(255,255,255,0.2);
+                        max-width: 400px;
+                    ">
+                        <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
+                        <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">Dashboard Non Compatible Mobile</h2>
+                        <p style="margin-bottom: 2rem; font-size: 1rem; line-height: 1.6;">
+                            Ce dashboard de scoring crédit est optimisé pour les ordinateurs de bureau et tablettes.
+                            Pour une expérience optimale, veuillez accéder au site depuis :
+                        </p>
+                        <ul style="text-align: left; margin-bottom: 2rem; font-size: 0.9rem; list-style-type: none; padding: 0;">
+                            <li style="margin-bottom: 0.5rem;">💻 Un ordinateur de bureau</li>
+                            <li style="margin-bottom: 0.5rem;">💻 Un ordinateur portable</li>
+                            <li style="margin-bottom: 0.5rem;">📱 Une tablette en mode paysage</li>
+                        </ul>
+                        <p style="font-size: 0.8rem; opacity: 0.8;">
+                            Écran minimum requis : 768px de largeur
+                        </p>
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+            document.body.appendChild(mobileWarning);
+        }
         return false;
+    } else {
+        // Remove mobile warning if exists
+        const mobileWarning = document.getElementById('mobile-warning');
+        if (mobileWarning) {
+            mobileWarning.remove();
+        }
     }
     return true;
 }
 
-// Check immediately and on resize
-if (!checkMobileAndRedirect()) {
-    // Stop execution if mobile
-}
+// Check immediately
+checkMobileAndRedirect();
 
+// Check on resize
 window.addEventListener('resize', checkMobileAndRedirect);
+
+// Check when DOM content is loaded
+document.addEventListener('DOMContentLoaded', checkMobileAndRedirect);
+
+// Check when Streamlit finishes loading
+setTimeout(checkMobileAndRedirect, 100);
+setTimeout(checkMobileAndRedirect, 500);
+setTimeout(checkMobileAndRedirect, 1000);
 </script>
 """
 
