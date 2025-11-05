@@ -13,6 +13,27 @@ from utils import *
 warnings.filterwarnings('ignore', category=UserWarning)
 warnings.filterwarnings('ignore', message='.*TreeExplainer shap values output.*')
 
+def custom_metric(label, value):
+    """Affiche une métrique personnalisée avec encadré blanc et texte gris"""
+    st.markdown(f"""
+    <div style="
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 0.8rem;
+        margin: 0.3rem 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    ">
+        <div style="font-size: 0.75rem; color: #888; margin-bottom: 0.2rem;">{label}</div>
+        <div style="font-size: 1.1rem; font-weight: 500; color: #555;">{value}</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+def custom_plotly_chart(fig, title=None, use_container_width=True):
+    """Affiche un graphique Plotly directement sans encadré"""
+    st.plotly_chart(fig, use_container_width=use_container_width)
+
 @st.cache_data
 def _read_df_cached(path):
     return read_df(path)
@@ -22,7 +43,7 @@ def _read_df_cached(path):
 def get_friendly_feature_names():
     """Map technical feature names to user-friendly labels"""
     return {
-        # Personal Information
+        # Informations personnelles
         'CNT_CHILDREN': 'Number of Children',
         'CNT_FAM_MEMBERS': 'Family Members',
         'DAYS_BIRTH': 'Age (days)',
@@ -159,79 +180,177 @@ def format_feature_name(feature_name):
     friendly_names = get_friendly_feature_names()
     return friendly_names.get(feature_name, feature_name)
 
-# Page configuration with custom theme
+# Configuration de la page
 st.set_page_config(
-    page_title='💳 Credit Risk Dashboard',
+    page_title="Dashboard Scoring Crédit",
+    page_icon="💰",
     layout="wide",
-    initial_sidebar_state='expanded'
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
-# Custom CSS
+# Check for mobile device and block access if needed
+mobile_check_js = """
+<script>
+function checkMobileAndRedirect() {
+    const isMobile = window.innerWidth <= 768 || 
+                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+        // Hide the main app content
+        const mainContent = document.querySelector('[data-testid="stApp"]');
+        if (mainContent) {
+            mainContent.style.display = 'none';
+        }
+        
+        // Show mobile warning
+        document.body.innerHTML = `
+            <div style="
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-align: center;
+                padding: 2rem;
+                font-family: Arial, sans-serif;
+            ">
+                <div style="
+                    background: rgba(255,255,255,0.1);
+                    padding: 3rem;
+                    border-radius: 20px;
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    max-width: 400px;
+                ">
+                    <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
+                    <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">Dashboard Non Compatible Mobile</h2>
+                    <p style="margin-bottom: 2rem; font-size: 1rem; line-height: 1.6;">
+                        Ce dashboard de scoring crédit est optimisé pour les ordinateurs de bureau et tablettes.
+                        Pour une expérience optimale, veuillez accéder au site depuis :
+                    </p>
+                    <ul style="text-align: left; margin-bottom: 2rem; font-size: 0.9rem;">
+                        <li>💻 Un ordinateur de bureau</li>
+                        <li>💻 Un ordinateur portable</li>
+                        <li>📱 Une tablette en mode paysage</li>
+                    </ul>
+                    <p style="font-size: 0.8rem; opacity: 0.8;">
+                        Écran minimum requis : 768px de largeur
+                    </p>
+                </div>
+            </div>
+        `;
+        return false;
+    }
+    return true;
+}
+
+// Check immediately and on resize
+if (!checkMobileAndRedirect()) {
+    // Stop execution if mobile
+}
+
+window.addEventListener('resize', checkMobileAndRedirect);
+</script>
+"""
+
+st.markdown(mobile_check_js, unsafe_allow_html=True)
+
+# Custom CSS - minimal styling
 st.markdown("""
     <style>
+    /* Clean default styling */
+    .stApp {
+        font-family: 'Poppins', sans-serif;
+    }
+    
     .main-header {
-        font-size: 3rem;
-        font-weight: 700;
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem;
+        font-size: 2.5rem;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 1rem;
     }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #666;
-        margin-bottom: 2rem;
+    
+    /* Style cohérent pour les graphiques */
+    .stPlotlyChart {
+        background: white !important;
+        border: 1px solid #ddd !important;
+        border-radius: 12px !important;
+        padding: 0 !important;
+        margin: 0.5rem 0 !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+        overflow: hidden !important;
     }
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    
+    /* Style pour les containers de graphiques */
+    .stPlotlyChart > div {
+        background: white !important;
+        border-radius: 8px !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    .stMetric {
-        background-color: #f8f9fa;
-        padding: 1rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    
+    /* Contenir les graphiques dans leurs encadrés */
+    .stPlotlyChart .plotly {
+        width: 100% !important;
+        height: auto !important;
     }
-    /* Fix sidebar metrics visibility - keep white background but make text dark */
-    section[data-testid="stSidebar"] .stMetric {
-        background-color: #ffffff !important;
+    
+    /* Style pour les onglets plus grands */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px !important;
     }
-    section[data-testid="stSidebar"] .stMetric label {
-        color: #333333 !important;
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 60px !important;
+        padding: 16px 32px !important;
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        border-radius: 12px 12px 0 0 !important;
+        border: 2px solid #e9ecef !important;
+        border-bottom: none !important;
+        font-size: 18px !important;
+        font-weight: 700 !important;
+        transition: all 0.3s ease !important;
     }
-    section[data-testid="stSidebar"] .stMetric [data-testid="stMetricValue"] {
-        color: #1f1f1f !important;
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: rgba(108, 117, 125, 0.15) !important;
+        border-color: #6c757d !important;
+        transform: translateY(-2px) !important;
     }
-    section[data-testid="stSidebar"] .stMetric [data-testid="stMetricDelta"] {
-        color: #666666 !important;
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #495057 !important;
+        color: white !important;
+        border-color: #495057 !important;
+        box-shadow: 0 4px 12px rgba(73, 80, 87, 0.3) !important;
     }
-
-    /* Mobile responsiveness */
+    
+    .stTabs [data-baseweb="tab-panel"] {
+        padding-top: 24px !important;
+    }
+    
+    /* Desktop optimized (mobile is blocked) */
+    @media (min-width: 769px) {
+        .main-header { font-size: 3rem; }
+    }
+    
+    /* Ensure desktop experience */
     @media (max-width: 768px) {
-        .main-header { font-size: 2rem; }
-        .sub-header { font-size: 1rem; }
-        .stMetric { padding: 0.5rem; }
-        .block-container { padding-left: 0.5rem; padding-right: 0.5rem; }
-        /* Force Streamlit columns to stack when too narrow */
-        div[data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+        body { display: none !important; }
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Header
-st.markdown('<h1 class="main-header">🏦 Dashboard Scoring Crédit</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Évaluation du risque de crédit avec modèles prédictifs</p>', unsafe_allow_html=True)
-
 placeholder = st.empty()
 placeholder_bis = st.empty()
 return_button = st.empty()
-
-#----------------------------------------------------------------------------------#
-#                                 LOADING DATA                                     #
-#----------------------------------------------------------------------------------#
 
 df = _read_df_cached('data/dataset_sample.csv')
 df = df.replace([np.inf, -np.inf], np.nan)
@@ -243,33 +362,20 @@ with st.spinner('⚙️ Chargement des modèles...'):
     preprocessor = pipeline[:-1]  # All steps except classifier
     clf = pipeline.named_steps['classifier']  # Extract classifier
 
-#----------------------------------------------------------------------------------#
-#                              SIDEBAR                                             #
-#----------------------------------------------------------------------------------#
-st.sidebar.markdown("## 👤 Sélection Client")
-st.sidebar.markdown("*Choisissez un ID client pour commencer l'analyse*")
+st.sidebar.markdown("*Choisissez un client pour commencer l'analyse*")
 
 all_clients_id = df['SK_ID_CURR'].unique()
-
-# Improved client selector with better UX
-st.sidebar.markdown("### 🔍 ID Client")
 
 # Initialize session state for client selection
 if 'selected_client' not in st.session_state:
     st.session_state.selected_client = ''
 
-# Add some example client IDs for guidance
-st.sidebar.markdown("### 💡 Client d'exemple")
-if st.sidebar.button("👤 Client #162473", key="example_162473", help="Charger le client d'exemple", use_container_width=True, type="secondary"):
-    st.session_state.selected_client = 162473
-    st.rerun()
-
 client_id = st.sidebar.selectbox(
-    "Tapez ou sélectionnez un ID client",
+    "Sélectionnez l'identifiant d'un client",
     options=[''] + list(all_clients_id),
-    format_func=lambda x: "🔍 Choisissez un client..." if x == '' else f"👤 Client #{int(x)}",
+    format_func=lambda x: "🔍 Choisissez un client..." if x == '' else f"Client #{int(x)}",
     label_visibility="collapsed",
-    help="Sélectionnez un ID client dans la liste pour voir son profil de risque",
+    help="Sélectionnez un client dans la liste pour voir son profil de risque",
     index=0 if st.session_state.selected_client == '' else list(all_clients_id).index(st.session_state.selected_client) + 1 if st.session_state.selected_client in all_clients_id else 0
 )
 
@@ -277,125 +383,176 @@ client_id = st.sidebar.selectbox(
 if client_id != st.session_state.selected_client:
     st.session_state.selected_client = client_id
 
-# Analysis section - moved up for better visibility
+# Analysis section
 if client_id != '':
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🚀 Analyse")
     
-    # Type of analysis selection
-    page = st.sidebar.radio(
-        "Type d'analyse",
-        ['Évaluation Risque Crédit', '📊 Informations Détaillées Client'],
-        label_visibility="collapsed",
-        help="Choisissez le type d'analyse que vous souhaitez effectuer"
-    )
-    
-    if page == 'Évaluation Risque Crédit':
-        st.sidebar.markdown("**Cliquez pour lancer l'analyse :**")
-        run_button = st.sidebar.button(
-            '🚀 Analyser le Risque Crédit', 
-            type="primary", 
-            use_container_width=True,
-            help="Lance l'analyse complète avec score de risque et explications"
-        )
-    else:
-        run_button = False
+    run_button = False
 else:
     page = 'Évaluation Risque Crédit'
     run_button = False
 
 if client_id == '':
+    page = 'Évaluation Risque Crédit'
+    run_button = False
+
+if client_id == '':
     with placeholder.container():
+        # Header principal uniquement sur la page d'accueil
+        st.markdown('<h1 class="main-header">Dashboard Scoring Crédit</h1>', unsafe_allow_html=True)
+        
         # Enhanced welcome page with clear instructions
         st.markdown("""
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                     padding: 2rem; border-radius: 15px; color: white; margin: 2rem 0;">
-            <h2 style="text-align: center; margin-bottom: 1rem;">🎯 Bienvenue dans le Dashboard Scoring Crédit</h2>
+            <h2 style="text-align: center; margin-bottom: 1rem;">Dashboard de Scoring Crédit - "Prêt à dépenser"</h2>
             <p style="text-align: center; font-size: 1.1rem;">
-                Évaluez le risque de crédit de vos clients en quelques clics avec notre système d'évaluation avancé
+                Outil d'aide à la décision pour les chargés de relation client
             </p>
         </div>
         """, unsafe_allow_html=True)
         
         # Clear instructions
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.markdown("""
-            ### 🚀 Comment utiliser ce dashboard ?
-            
-            **Étape 1 :** 👈 Sélectionnez un client dans la barre latérale
-            - Utilisez la liste déroulante ou les exemples proposés
-            - Plus de 300 000 clients disponibles dans la base
-            
-            **Étape 2 :** 📊 Analysez les résultats automatiquement générés
-            - Score de risque avec jauge visuelle
-            - Recommandation d'acceptation/refus
-            - Explications détaillées (pourquoi cette décision ?)
-            
-            **Étape 3 :** 🔍 Explorez les détails
-            - Profil client complet
-            - Comparaison avec les autres clients
-            - Graphiques interactifs
-            """)
-            
-        # Feature highlights
-        st.markdown("---")
-        col1, col2, col3, col4 = st.columns(4)
+        st.markdown("### Comment utiliser cet outil ?")
         
+        col1, col2, col3 = st.columns([1, 1, 1])
         with col1:
             st.markdown("""
-            <div style="text-align: center; padding: 1rem; background-color: #f0f2f6; border-radius: 10px; color: #333;">
-                <h3>⚙️</h3>
-                <strong>Analyse Avancée</strong><br>
-                <small>Modèle LightGBM optimisé</small>
+            <div style="
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin: 0.5rem 0;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                text-align: center;
+                height: 200px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            ">
+                <div style="font-size: 2rem; margin-bottom: 0.8rem;">📋</div>
+                <h4 style="color: #333; margin-bottom: 0.8rem;">Étape 1 : Choisir un client</h4>
+                <ul style="color: #666; font-size: 0.9rem; text-align: left; list-style: none; padding: 0;">
+                    <li>• Sélectionnez un client dans la liste déroulante</li>
+                    <li>• Plus de 300 000 clients disponibles</li>
+                    <li>• Informations affichées automatiquement</li>
+                </ul>
             </div>
             """, unsafe_allow_html=True)
             
         with col2:
             st.markdown("""
-            <div style="text-align: center; padding: 1rem; background-color: #f0f2f6; border-radius: 10px; color: #333;">
-                <h3>⚡</h3>
-                <strong>Temps Réel</strong><br>
-                <small>Prédictions instantanées</small>
+            <div style="
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin: 0.5rem 0;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                text-align: center;
+                height: 200px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            ">
+                <div style="font-size: 2rem; margin-bottom: 0.8rem;">👤</div>
+                <h4 style="color: #333; margin-bottom: 0.8rem;">Étape 2 : Consulter le profil</h4>
+                <ul style="color: #666; font-size: 0.9rem; text-align: left; list-style: none; padding: 0;">
+                    <li>• Informations personnelles et professionnelles</li>
+                    <li>• Données affichées dans la barre latérale</li>
+                    <li>• Navigation automatique vers l'analyse</li>
+                </ul>
             </div>
             """, unsafe_allow_html=True)
             
         with col3:
             st.markdown("""
-            <div style="text-align: center; padding: 1rem; background-color: #f0f2f6; border-radius: 10px; color: #333;">
-                <h3>🔍</h3>
-                <strong>Explicable</strong><br>
-                <small>Transparence totale</small>
+            <div style="
+                background: white;
+                border: 1px solid #ddd;
+                border-radius: 12px;
+                padding: 1.5rem;
+                margin: 0.5rem 0;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                text-align: center;
+                height: 200px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            ">
+                <div style="font-size: 2rem; margin-bottom: 0.8rem;">📊</div>
+                <h4 style="color: #333; margin-bottom: 0.8rem;">Étape 3 : Explorer les détails</h4>
+                <ul style="color: #666; font-size: 0.9rem; text-align: left; list-style: none; padding: 0;">
+                    <li>• Score de risque avec explication SHAP</li>
+                    <li>• Onglet "Analyse Détaillée" pour comparaisons</li>
+                    <li>• Visualisations interactives</li>
+                </ul>
             </div>
             """, unsafe_allow_html=True)
             
-        with col4:
-            st.markdown("""
-            <div style="text-align: center; padding: 1rem; background-color: #f0f2f6; border-radius: 10px; color: #333;">
-                <h3>📈</h3>
-                <strong>Visualisations</strong><br>
-                <small>Graphiques interactifs</small>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        # Quick start section
+        # Process explanation
         st.markdown("---")
-        st.markdown("### ⚡ Démarrage rapide")
-        st.info("""
-        **Pressé ?** Utilisez le client d'exemple dans la barre latérale pour voir 
-        immédiatement le dashboard en action ! 
+        st.markdown("### Processus détaillé d'utilisation")
         
-        **Client recommandé :**
-        - **Client #162473** : Profil avec explications détaillées pour tester le dashboard
-        """)
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.markdown("""
+            <div style="
+                background: white;
+                border: 1px solid #ddd;
+                border-left: 4px solid #667eea;
+                border-radius: 12px;
+                padding: 2rem;
+                margin: 0.5rem 0;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            ">
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <div style="font-size: 1.8rem; margin-right: 0.8rem;">📈</div>
+                    <h4 style="color: #333; margin: 0;">Analyse du risque crédit</h4>
+                </div>
+                <ol style="color: #666; font-size: 0.95rem; line-height: 1.6; margin: 0;">
+                    <li><strong style="color: #333;">Score de probabilité :</strong> Calcul du risque de défaut (0-100%)</li>
+                    <li><strong style="color: #333;">Recommandation :</strong> Faible/Modéré/Élevé avec seuils clairs</li>
+                    <li><strong style="color: #333;">Explication SHAP :</strong> Facteurs qui influencent le score</li>
+                    <li><strong style="color: #333;">Aide à la décision :</strong> Comprendre le "pourquoi" du score</li>
+                </ol>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col2:
+            st.markdown("""
+            <div style="
+                background: white;
+                border: 1px solid #ddd;
+                border-left: 4px solid #28a745;
+                border-radius: 12px;
+                padding: 2rem;
+                margin: 0.5rem 0;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            ">
+                <div style="display: flex; align-items: center; margin-bottom: 1rem;">
+                    <div style="font-size: 1.8rem; margin-right: 0.8rem;">🔍</div>
+                    <h4 style="color: #333; margin: 0;">Exploration comparative</h4>
+                </div>
+                <ol style="color: #666; font-size: 0.95rem; line-height: 1.6; margin: 0;">
+                    <li><strong style="color: #333;">Sélection variables :</strong> Choisir les caractéristiques à analyser</li>
+                    <li><strong style="color: #333;">Distribution :</strong> Position du client vs population totale</li>
+                    <li><strong style="color: #333;">Comparaison :</strong> Profil par rapport aux défaillants/non-défaillants</li>
+                    <li><strong style="color: #333;">Compréhension :</strong> Contextualiser le score obtenu</li>
+                </ol>
+            </div>
+            """, unsafe_allow_html=True)
     
     st.stop()
 
 else:
     data_client= df[df["SK_ID_CURR"]==client_id]
     client_index = data_client.index[0]
-
-    placeholder.info(f"✅ **Client #{client_id} sélectionné !** 👈 Cliquez maintenant sur le bouton **'🚀 Analyser le Risque Crédit'** dans la barre latérale pour lancer l'analyse.")
+    
+    # Load description data for feature explanations (always available)
+    description = pd.read_csv('data/HomeCredit_columns_description.csv',
+                                encoding='ISO-8859-1',
+                                )
 
     gender = data_client.loc[client_index, "CODE_GENDER"]
     if gender == 1:
@@ -423,232 +580,147 @@ else:
     try: 
         years_work = -int(round(days_employed/365))
         if years_work < 1: 
-            years_work = 'Less than a year'
+            years_work = "Moins d'un an"
         elif years_work == 1:
-            years_work = str(years_work) + ' year'
+            years_work = str(years_work) + ' an'
         else: 
-            years_work = str(years_work) + ' years'
+            years_work = str(years_work) + ' ans'
     except:
         years_work = 'no information'
     
-    # Display client info in beautiful sidebar
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 👤 Personal Information")
+    # Display client info in sidebar
+    st.sidebar.markdown("### 👤 Informations personnelles")
     
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        st.metric("👤 Sexe", gender)
-        st.metric("🎂 Âge", f"{age} ans")
+        custom_metric("👤 Sexe", gender)
+        custom_metric("🎂 Âge", f"{age} ans")
     with col2:
-        st.metric("👨‍👩‍👧‍👦 Famille", int(round(fam_members)))
-        st.metric("👶 Enfants", int(round(childs)))
+        custom_metric("👨‍👩‍👧‍👦 Famille", int(round(fam_members)))
+        custom_metric("👶 Enfants", int(round(childs)))
     
     with st.sidebar.expander("📚 Plus de Détails", expanded=False):
         st.write(f"**Éducation :** {education}")
         st.write(f"**Statut Marital :** {family_status}")
     
-    st.sidebar.markdown("---")
     st.sidebar.markdown("### 💼 Informations Professionnelles")
     
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        st.metric("💵 Revenus", f"${round(income_per_person):,}")
+        custom_metric("💵 Revenus", f"${round(income_per_person):,}")
     with col2:
-        st.metric("📅 Expérience", years_work if isinstance(years_work, str) else f"{years_work} ans")
+        custom_metric("📅 Expérience", years_work if isinstance(years_work, str) else f"{years_work} ans")
     
     with st.sidebar.expander("💼 Détails Travail", expanded=False):
         st.write(f"**Profession :** {work}")
         st.write(f"**Type :** {occupation_type if occupation_type else 'N/A'}")
     
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 💳 Informations Crédit")
+    st.sidebar.markdown("### 💰 Informations Crédit")
     
     col1, col2 = st.sidebar.columns(2)
     with col1:
-        st.metric("💰 Crédit", f"${round(credit):,}")
+        custom_metric("💰 Crédit", f"${round(credit):,}")
     with col2:
-        st.metric("📊 Annuité", f"${round(annuity):,}")
+        custom_metric("📊 Annuité", f"${round(annuity):,}")
     
-    st.sidebar.metric("📈 Taux de Paiement", f"{payment_rate:.1%}")
+    with st.sidebar:
+        custom_metric("📈 Taux de Paiement", f"{payment_rate:.1%}")
     
-    # Layout preference for better small-screen experience
-    is_mobile = st.sidebar.toggle(
-        "📱 Mode mobile",
-        value=False,
-        help="Optimise l'affichage pour les petits écrans"
-    )
-
-    # Help section
-    st.sidebar.markdown("---")
-    with st.sidebar.expander("❓ Aide", expanded=False):
-        st.markdown("""
-        **Guide rapide :**
+    # Système d'onglets pour l'analyse
+    tab1, tab2 = st.tabs(["🎯 Risque de crédit", "📊 Analyse détaillée"])
+    
+    with tab1:
+        # Analyse automatique
         
-        1️⃣ **Sélectionnez** un client dans la liste
+        # Analyse automatique sans bouton
         
-        2️⃣ **Choisissez** le type d'analyse :
-        - ⚙️ **Évaluation Risque** : Score + décision
-        - 📊 **Infos Détaillées** : Profil complet
-        
-        3️⃣ **Cliquez** sur "Analyser le Risque"
-        
-        **Comprendre les résultats :**
-        - 🟢 **< 30%** : Risque faible → Accepter
-        - 🟡 **30-50%** : Risque moyen → Examiner  
-        - 🔴 **> 50%** : Risque élevé → Refuser
-        
-        **Barres d'explication :**
-        - 🔴 Rouges : Augmentent le risque
-        - 🟢 Vertes : Diminuent le risque
-        """)
-
-
-if page == 'Évaluation Risque Crédit':
-    if run_button:
-        #----------------------------------------------------------------------------------#
-        #                                 PREPROCESSING                                    #
-        #----------------------------------------------------------------------------------#
-
         X = data_client.drop(['TARGET', 'SK_ID_CURR'], axis=1)
         y = data_client['TARGET']
 
         # Do not transform X here — the helper will call the API first.
         # If local fallback is used, helper will call preprocessor.transform.
 
-        #----------------------------------------------------------------------------------#
-        #                           PREDICT, WITH API                                      #
-        #----------------------------------------------------------------------------------#
-        with st.status("Analyse en cours...", expanded=True) as status:
-            st.write("🔗 Connexion à l'API de prédiction...")
-            # API is the default source of truth; make it configurable via env var
-            url_api = os.getenv('CREDIT_SCORE_API_URL', 'https://credit-score-api-572900860091.europe-west1.run.app')
-            st.write("Traitement des données crédit...")
-            # Use helper which tries API first, then falls back to local classifier
-            prob = predict_with_api_or_local(client_id,
-                                            X,
-                                            api_url=url_api,
-                                            classifier=clf,
-                                            preprocessor=preprocessor)
-            st.write("Analyse terminée !")
-            status.update(label="Analyse Terminée !", state="complete", expanded=False)
+        url_api = os.getenv('CREDIT_SCORE_API_URL', 'https://credit-score-api-572900860091.europe-west1.run.app')
+        prob = predict_with_api_or_local(client_id,
+                                        X,
+                                        api_url=url_api,
+                                        classifier=clf,
+                                        preprocessor=preprocessor)
         
         #----------------------------------------------------------------------------------#
         #                           RESULTS DISPLAY                                        #
         #----------------------------------------------------------------------------------#
         with placeholder.container():
-            # Header for results
-            st.markdown("## 📊 Résultats de l'Analyse du Risque Crédit")
-            st.markdown("---")
-            
-            risk_score = prob * 100
-            
-            # Determine risk level and styling
-            if risk_score < 30:
-                risk_level = "Risque Faible"
-                risk_icon = "✅"
-                risk_color = "#28a745"
-                decision = "ACCEPTÉ"
-                decision_icon = "✅"
-                recommendation = "Nous recommandons d'ACCEPTER la demande de crédit de ce client."
-            elif risk_score <= 50:
-                risk_level = "Risque Modéré"
-                risk_icon = "⚠️"
-                risk_color = "#ffc107"
-                decision = "EXAMEN REQUIS"
-                decision_icon = "⚠️"
-                recommendation = "Le risque de défaut du client est modéré. Nous recommandons d'examiner des facteurs supplémentaires avant de prendre une décision."
-            else:
-                risk_level = "Risque Élevé"
-                risk_icon = "❌"
-                risk_color = "#dc3545"
-                decision = "REFUSÉ"
-                decision_icon = "❌"
-                recommendation = "Nous recommandons de REFUSER la demande de crédit de ce client en raison du risque de défaut élevé."
-            
-            # Main results: desktop uses columns; mobile stacks sections
-            if is_mobile:
-                # Gauge
-                with st.container():
-                    fig_gauge = plot_gauge(risk_score)
-                    st.plotly_chart(fig_gauge, use_container_width=True)
+            pass
+        
+        # Calculate risk score
+        risk_score = prob * 100
+        
+        # Determine risk level and styling
+        if risk_score < 30:
+            risk_level = "Risque Faible"
+            risk_icon = "✅"
+            risk_color = "#28a745"
+            decision = "RISQUE FAIBLE"
+            decision_icon = "✅"
+            recommendation = "Le modèle évalue ce profil comme présentant un risque faible de défaut de paiement."
+        elif risk_score <= 50:
+            risk_level = "Risque Modéré"
+            risk_icon = "⚠️"
+            risk_color = "#ffc107"
+            decision = "RISQUE MODÉRÉ"
+            decision_icon = "⚠️"
+            recommendation = "Le modèle détecte un risque modéré. Une analyse plus approfondie serait recommandée."
+        else:
+            risk_level = "Risque Élevé"
+            risk_icon = "❌"
+            risk_color = "#dc3545"
+            decision = "RISQUE ÉLEVÉ"
+            decision_icon = "❌"
+            recommendation = "Le modèle identifie un risque élevé de défaut de paiement pour ce profil."
+        
+        # Main results: two columns layout
+        col1, col2 = st.columns([1, 2])
 
-                # Score card
-                st.markdown(f"""
-                    <div style='display: flex; align-items: center;'>
-                        <div style='text-align: center; padding: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                             border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); width: 100%; display: flex; 
-                             flex-direction: column; justify-content: center;'>
-                            <h1 style='color: white; margin: 0; font-size: 3rem;'>{risk_icon}</h1>
-                            <h2 style='color: white; margin: 0.5rem 0;'>{risk_score:.1f}%</h2>
-                            <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 1rem;'>{risk_level}</p>
+        with col1:        
+            # Jauge de risque en bas
+            with st.container():
+                fig_gauge = plot_gauge(risk_score)
+                st.plotly_chart(fig_gauge, use_container_width=True)
+
+        with col2:
+            st.markdown("")
+            st.markdown("")
+            # Décision et recommandation centrée par rapport à la gauge
+            st.markdown(f"""
+                <div style='display: flex; align-items: center; justify-content: center; min-height: 350px;'>
+                    <div style='padding: 1.2rem; border-left: 5px solid {risk_color}; 
+                         background-color: rgba(128,128,128,0.05); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05);'>
+                        <h2 style='color: {risk_color}; margin: 0 0 0.8rem 0;'>{decision_icon} {decision}</h2>
+                        <p style='margin: 0; font-size: 1.1rem; line-height: 1.6;'>{recommendation}</p>
+                        <div style='margin-top: 1.2rem; padding: 0.8rem; background: rgba(255,255,255,0.7); border-radius: 8px;'>
+                            <h4 style='color: #333; margin-bottom: 0.8rem;'>Interprétation des scores :</h4>
+                            <ul style='color: #666; font-size: 0.9rem; margin: 0;'>
+                                <li><strong>< 30%</strong> : Risque faible de défaut</li>
+                                <li><strong>30-50%</strong> : Risque modéré</li>
+                                <li><strong>> 50%</strong> : Risque élevé</li>
+                            </ul>
                         </div>
                     </div>
-                """, unsafe_allow_html=True)
-
-                # Decision
-                st.markdown(f"""
-                    <div style='display: flex; align-items: center;'>
-                        <div style='padding: 1.5rem; border-left: 5px solid {risk_color}; 
-                             background-color: rgba(128,128,128,0.05); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-                             width: 100%; display: flex; flex-direction: column; justify-content: center;'>
-                            <h2 style='color: {risk_color}; margin: 0 0 0.5rem 0;'>{decision_icon} {decision}</h2>
-                            <p style='margin: 0; font-size: 1rem;'>{recommendation}</p>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                col1, col2, col3 = st.columns([2, 1, 2])
-
-                with col1:
-                    with st.container():
-                        fig_gauge = plot_gauge(risk_score)
-                        st.plotly_chart(fig_gauge, use_container_width=True)
-
-                with col2:
-                    st.markdown(f"""
-                        <div style='display: flex; align-items: center; height: 400px;'>
-                            <div style='text-align: center; padding: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                                 border-radius: 15px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); width: 100%; display: flex; 
-                                 flex-direction: column; justify-content: center;'>
-                                <h1 style='color: white; margin: 0; font-size: 3.5rem;'>{risk_icon}</h1>
-                                <h2 style='color: white; margin: 0.5rem 0;'>{risk_score:.1f}%</h2>
-                                <p style='color: rgba(255,255,255,0.9); margin: 0; font-size: 1.1rem;'>{risk_level}</p>
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-                with col3:
-                    st.markdown(f"""
-                        <div style='display: flex; align-items: center; height: 400px;'>
-                            <div style='padding: 2rem; border-left: 5px solid {risk_color}; 
-                                 background-color: rgba(128,128,128,0.05); border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-                                 width: 100%; display: flex; flex-direction: column; justify-content: center;'>
-                                <h2 style='color: {risk_color}; margin: 0 0 1rem 0;'>{decision_icon} {decision}</h2>
-                                <p style='margin: 0; font-size: 1.1rem;'>{recommendation}</p>
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-            
-            st.markdown("---")
-            
-            # Risk thresholds explanation
-            st.info("""
-                **Seuils de Décision :**
-                - **< 30%** : Risque faible → Approbation de crédit recommandée
-                - **30-50%** : Risque modéré → Examen supplémentaire suggéré
-                - **> 50%** : Risque élevé → Refus de crédit recommandé
-                
-                💡 *Utilisez l'onglet "📊 Informations Détaillées Client" pour une analyse détaillée qui vous aidera dans votre décision.*
-            """)
-            
-            # SHAP Analysis Section
-            st.markdown("## 🔍 Explication de la Décision")
+                </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("")
+        st.markdown("")
+        
+        # SHAP Analysis Section in Expander
+        with st.expander("Explicabilité du Modèle (SHAP) - Facteurs d'influence", expanded=False):
             st.markdown("""
-            **Pourquoi cette décision ?** Notre modèle d'IA analyse de nombreux facteurs. 
-            Voici les éléments qui ont le plus influencé le score de ce client :
+            L'analyse SHAP révèle 
+            quelles caractéristiques du profil influencent le plus la prédiction :
             """)
             
-            with st.spinner('🧠 Analyse des facteurs d\'influence...'):
+            with st.spinner('Analyse des facteurs d\'influence...'):
                 feats = read_pickle('ressource/feats')
                 mapping = {f"Column_{i}": name for i, name in enumerate(df.columns)}
                 # Load SHAP explainer via robust utils fallback
@@ -669,18 +741,17 @@ if page == 'Évaluation Risque Crédit':
 
                 shap_explained, most_important_features = format_shap_values(shap_vals_class1, feats)
                 
-                # Replace technical names with friendly names in SHAP results
+                # Replace technical names with friendly names
                 shap_explained["features"] = shap_explained["features"].map(mapping).fillna(shap_explained["features"])
 
                 most_important_features = [format_feature_name(f) for f in most_important_features]
                 
                 explained_chart = plot_important_features(shap_explained, most_important_features)
 
-            # SHAP Visualization with better explanation
-            st.markdown("### 📊 Facteurs d'influence (Top 10)")
-            st.plotly_chart(explained_chart, use_container_width=True)
+            # SHAP Visualization
+            custom_plotly_chart(explained_chart, "Analyse SHAP - Facteurs d'Influence")
             
-            # Color-coded explanation
+            # Explanation colors
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("""
@@ -700,103 +771,76 @@ if page == 'Évaluation Risque Crédit':
                 
             st.markdown("---")
             st.success("""
-            💡 **Comment interpréter ?**
-            - Plus la barre est longue, plus le facteur influence la décision
-            - Les facteurs sont classés par ordre d'importance
-            - Utilisez ces informations pour expliquer la décision au client
+            💡 **Comment interpréter ces résultats ?**
+            - Plus la barre est longue, plus le facteur influence la prédiction
+            - Les facteurs sont classés par ordre d'importance décroissante
+            - Cette analyse démontre la transparence du modèle statistique
             """)
 
-if page == '📊 Informations Détaillées Client':
-    description = pd.read_csv('data/HomeCredit_columns_description.csv',
-                                    encoding='ISO-8859-1',
-                                    )
-    
-    # Display client application data analysis
-    st.markdown("### 📊 Analyse Approfondie des Données Client")
-    st.info("💡 Explorez et comparez les caractéristiques de ce client avec l'ensemble de la population")
-    
-    st.divider()
-    
-    data = read_df('data/application_sample.csv')
-    data["TARGET"] = data["TARGET"].astype(str)
-
-    # Features selection interface
-    st.markdown("### 📊 Features analysis")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("**Primary features** (select multiple)")
-        # Get available features and create friendly mapping
-        available_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).select_dtypes('float').columns
-        feature_options = {format_feature_name(f): f for f in available_features}
-        
-        selected_friendly = st.multiselect(
-            'Choose features to analyze:',
-            options=list(feature_options.keys()),
-            help="Select one or more numeric features to visualize"
-        )
-        # Convert back to technical names for processing
-        selected_features = [feature_options[f] for f in selected_friendly]
-    
-    with col2:
-        st.markdown("**Secondary feature** (optional)")
-        all_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
-        all_feature_options = {format_feature_name(f): f for f in all_features}
-        
-        selected_friendly_2 = st.selectbox(
-            'Compare with another feature:',
-            ['Choose a variable...'] + list(all_feature_options.keys()),
-            help="Optional: Select a second feature for comparison"
-        )
-        # Convert back to technical name
-        if selected_friendly_2 != 'Choose a variable...':
-            selected_features_2 = all_feature_options[selected_friendly_2]
-        else:
-            selected_features_2 = 'Choose a variable...'
-    st.divider()
-    
-    graph_place = st.empty()
-    if selected_features and selected_features_2 == "Choose a variable...":
-        for features in selected_features:
-            # Get friendly name for display
-            friendly_name = format_feature_name(features)
+    with tab2:
+        # Display client application data analysis
+        st.info("💡 Explorez et comparez les caractéristiques de ce client avec l'ensemble de la population")
             
+        data = read_df('data/application_sample.csv')
+        data["TARGET"] = data["TARGET"].astype(str)
+
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Variables principales** (sélection multiple)")
+            # Get available features and create friendly mapping
+            available_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).select_dtypes('float').columns
+            feature_options = {format_feature_name(f): f for f in available_features}
             
-            with st.container():
-                data_client_value = data.loc[data['SK_ID_CURR'] == client_id, features].values
-                data_client_target = data.loc[data['SK_ID_CURR'] == client_id, 'TARGET'].values
+            selected_friendly = st.multiselect(
+                'Choisissez les variables à analyser :',
+                options=list(feature_options.keys()),
+                help="Sélectionnez une ou plusieurs variables numériques à visualiser"
+            )
+            # Convert back to technical names for processing
+            selected_features = [feature_options[f] for f in selected_friendly]
+        
+        with col2:
+            st.markdown("**Variable secondaire** (optionnel)")
+            all_features = data[data['SK_ID_CURR'] == client_id].dropna(axis=1).columns
+            all_feature_options = {format_feature_name(f): f for f in all_features}
+            
+            selected_friendly_2 = st.selectbox(
+                'Comparer avec une autre variable :',
+                ['Choisissez une variable...'] + list(all_feature_options.keys()),
+                help="Optionnel : Sélectionnez une seconde variable pour comparaison"
+            )
+            # Convert back to technical name
+            if selected_friendly_2 != 'Choisissez une variable...':
+                selected_features_2 = all_feature_options[selected_friendly_2]
+            else:
+                selected_features_2 = 'Choisissez une variable...'
+        st.divider()
+        
+        graph_place = st.empty()
+        if selected_features and selected_features_2 == "Choisissez une variable...":
+            for features in selected_features:
+                # Get friendly name for display
+                friendly_name = format_feature_name(features)
+                
+                
+                with st.container():
+                    data_client_value = data.loc[data['SK_ID_CURR'] == client_id, features].values
+                    data_client_target = data.loc[data['SK_ID_CURR'] == client_id, 'TARGET'].values
 
-                # Generate distribution data
-                hist, edges = np.histogram(data.loc[:, features].dropna(), bins=20)
-                hist_source_df = pd.DataFrame({"edges_left": edges[:-1], "edges_right": edges[1:], "hist":hist})
-                max_histogram = hist_source_df["hist"].max()
-                client_line = pd.DataFrame({"x": [data_client_value, data_client_value],
-                                            "y": [0, max_histogram]})
-                hist_source = hist_source_df.to_dict('list')
+                    # Generate distribution data
+                    hist, edges = np.histogram(data.loc[:, features].dropna(), bins=20)
+                    hist_source_df = pd.DataFrame({"edges_left": edges[:-1], "edges_right": edges[1:], "hist":hist})
+                    max_histogram = hist_source_df["hist"].max()
+                    client_line = pd.DataFrame({"x": [data_client_value, data_client_value],
+                                                "y": [0, max_histogram]})
+                    hist_source = hist_source_df.to_dict('list')
 
-                if is_mobile:
-                    # Stack plots vertically
-                    plot = plot_feature_distrib(friendly_name, client_line, hist_source, data_client_value, max_histogram)
-                    st.plotly_chart(plot, use_container_width=True)
-
-                    fig = px.box(data, x='TARGET', y=features, points="outliers", color='TARGET', height=580)
-                    fig.update_traces(quartilemethod="inclusive")
-                    fig.add_trace(go.Scatter(x=data_client_target,
-                                            y=data_client_value,
-                                            mode='markers',
-                                            marker=dict(size=10),
-                                            showlegend=False,
-                                            name='client'))
-                    fig.update_layout(
-                        yaxis_title=friendly_name,
-                        xaxis_title='Default status (0=No, 1=Yes)'
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
+                    # Display in columns
                     col1, col2 = st.columns(2)
                     with col1:
                         plot = plot_feature_distrib(friendly_name, client_line, hist_source, data_client_value, max_histogram)
-                        st.plotly_chart(plot, use_container_width=True)
+                        custom_plotly_chart(plot, f"Distribution - {friendly_name}")
                     with col2:
                         fig = px.box(data, x='TARGET', y=features, points="outliers", color='TARGET', height=580)
                         fig.update_traces(quartilemethod="inclusive")
@@ -810,82 +854,63 @@ if page == '📊 Informations Détaillées Client':
                             yaxis_title=friendly_name,
                             xaxis_title='Default status (0=No, 1=Yes)'
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        custom_plotly_chart(fig, f"Comparaison par Statut - {friendly_name}")
 
                     # Feature description card
-            st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                     padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
-                    <h4 style='color: white; margin: 0;'>{friendly_name}</h4>
-                    <p style='color: white; margin: 5px 0 0 0; opacity: 0.9; font-size: 0.85em;'>
-                        Technical name: {features}<br>
-                        {description.loc[description['Row'] == features, 'Description'].values[0] if len(description.loc[description['Row'] == features, 'Description'].values) > 0 else ''}
-                    </p>
-                </div>
-            """, unsafe_allow_html=True)
-            st.divider()
-    elif selected_features and selected_features_2 != "Choose a variable...": 
-        with graph_place.container():
-            for features in selected_features:
-                # Get friendly names
-                friendly_name_1 = format_feature_name(features)
-                friendly_name_2 = format_feature_name(selected_features_2)
-                
-                if selected_features_2 in data.select_dtypes('float').columns.to_list():
-                    data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
-                    data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
-                    
-                    # Create scatter plot with technical names, then update labels
-                    fig = px.scatter(data, x=features, y=selected_features_2, color='TARGET', height=580, opacity=.3)
-                    fig.add_trace(go.Scattergl(x=data_client_value_1,
-                                            y=data_client_value_2,
-                                            mode='markers',
-                                            marker=dict(size=10, color = 'red'),
-                                            name='client'))
-                    fig.update_layout(
-                        legend=dict(yanchor="top", y=1, xanchor="left", x=1),
-                        xaxis_title=friendly_name_1,
-                        yaxis_title=friendly_name_2
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.markdown(f"""
+                        <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                             padding: 15px; border-radius: 10px; margin-bottom: 20px;'>
+                            <h4 style='color: white; margin: 0;'>{friendly_name}</h4>
+                            <p style='color: white; margin: 5px 0 0 0; opacity: 0.9; font-size: 0.85em;'>
+                                Technical name: {features}<br>
+                                {description.loc[description['Row'] == features, 'Description'].values[0] if len(description.loc[description['Row'] == features, 'Description'].values) > 0 else ''}
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)
                     st.divider()
-                else:
-                    data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
-                    data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
+        elif selected_features and selected_features_2 != "Choose a variable...": 
+            with graph_place.container():
+                for features in selected_features:
+                    # Get friendly names
+                    friendly_name_1 = format_feature_name(features)
+                    friendly_name_2 = format_feature_name(selected_features_2)
                     
-                    # Create box plot with technical names, then update labels
-                    fig = px.box(data, x=selected_features_2, y=features, points="outliers", color=selected_features_2, height=580)
-                    fig.update_traces(quartilemethod="inclusive")
-                    fig.add_trace(go.Scatter(x=data_client_value_2,
-                                             y=data_client_value_1,
-                                             mode='markers',
-                                             marker=dict(size=10),
-                                             showlegend=False,
-                                             name='client'))
-                    fig.update_layout(
-                        xaxis_title=friendly_name_2,
-                        yaxis_title=friendly_name_1
-                    )
-                    
-                    st.plotly_chart(fig, use_container_width=True)
-                    st.divider()
-
-#----------------------------------------------------------------------------------#
-#                                    BOTTOM                                        #
-#----------------------------------------------------------------------------------#
-st.write("---")
-
-col_about, col_FAQ, col_doc, col_contact = st.columns(4)
-
-with col_about:
-    st.write("About us")
-
-with col_FAQ:
-    st.write("FAQ")
-
-with col_doc:
-    st.write("Technical documentation")
-
-with col_contact:
-    st.write("Contact")
+                    if selected_features_2 in data.select_dtypes('float').columns.to_list():
+                        data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
+                        data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
+                        
+                        # Create scatter plot
+                        fig = px.scatter(data, x=features, y=selected_features_2, color='TARGET', height=580, opacity=.3)
+                        fig.add_trace(go.Scattergl(x=data_client_value_1,
+                                                y=data_client_value_2,
+                                                mode='markers',
+                                                marker=dict(size=10, color = 'red'),
+                                                name='client'))
+                        fig.update_layout(
+                            legend=dict(yanchor="top", y=1, xanchor="left", x=1),
+                            xaxis_title=friendly_name_1,
+                            yaxis_title=friendly_name_2
+                        )
+                        
+                        custom_plotly_chart(fig, f"Corrélation : {friendly_name_1} vs {friendly_name_2}")
+                        st.divider()
+                    else:
+                        data_client_value_1 = data.loc[data['SK_ID_CURR'] == client_id, features].values
+                        data_client_value_2 = data.loc[data['SK_ID_CURR'] == client_id, selected_features_2].values
+                        
+                        # Create box plot
+                        fig = px.box(data, x=selected_features_2, y=features, points="outliers", color=selected_features_2, height=580)
+                        fig.update_traces(quartilemethod="inclusive")
+                        fig.add_trace(go.Scatter(x=data_client_value_2,
+                                                y=data_client_value_1,
+                                                mode='markers',
+                                                marker=dict(size=10),
+                                                showlegend=False,
+                                                name='client'))
+                        fig.update_layout(
+                            xaxis_title=friendly_name_2,
+                            yaxis_title=friendly_name_1
+                        )
+                        
+                        custom_plotly_chart(fig, f"Analyse par Catégorie : {friendly_name_1} par {friendly_name_2}")
+                        st.divider()

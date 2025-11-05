@@ -164,7 +164,7 @@ def plot_gauge(prediction_default):
     fig_gauge = go.Figure(go.Indicator(
         domain = {'x': [0, 1], 'y': [0, 1]},
         value = prediction_default,
-        mode = "gauge+number+delta",
+        mode = "gauge+number",
         title = {'text': "Risque de défaut (%)", 'font': {'size': 20, 'color': '#2c3e50'}},
         number = {'font': {'size': 40, 'color': '#2c3e50'}},
         gauge = {
@@ -173,7 +173,9 @@ def plot_gauge(prediction_default):
                 'tick0': 0,
                 'dtick': 10,
                 'tickwidth': 2,
-                'tickcolor': '#2c3e50'
+                'tickcolor': '#2c3e50',
+                'tickfont': {'color': '#2c3e50', 'size': 14},
+                'showticklabels': True
             },
             'bar': {
                 'color': bar_color,
@@ -198,7 +200,7 @@ def plot_gauge(prediction_default):
 
     fig_gauge.update_layout(
         height=400,
-        margin={'l': 30, 'r': 30, 'b': 30, 't': 50},
+        margin={'l': 30, 'r': 40, 'b': 30, 't': 50},
         paper_bgcolor='white',
         font={'family': 'Arial, sans-serif'},
         autosize=True
@@ -292,10 +294,14 @@ def plot_important_features(shap_explained, most_important_features):
             gridcolor='lightgray',
             zeroline=True,
             zerolinecolor='black',
-            zerolinewidth=2
+            zerolinewidth=2,
+            tickfont=dict(color='#333', size=12),
+            titlefont=dict(color='#2c3e50', size=14)
         ),
         yaxis=dict(
-            gridcolor='lightgray'
+            gridcolor='lightgray',
+            tickfont=dict(color='#333', size=12),
+            titlefont=dict(color='#2c3e50', size=14)
         )
     )
     
@@ -370,7 +376,13 @@ def plot_feature_distrib(feature_distrib, client_line, hist_source, data_client_
         plot_bgcolor='white',
         paper_bgcolor='white',
         xaxis=dict(gridcolor='lightgray'),
-        yaxis=dict(gridcolor='lightgray', rangemode='tozero')
+        yaxis=dict(gridcolor='lightgray', rangemode='tozero'),
+        legend=dict(
+            bgcolor='rgba(255,255,255,0.9)',
+            borderwidth=1,
+            font=dict(color='#333', size=12),
+            yanchor='top'
+        )
     )
     
     return fig
