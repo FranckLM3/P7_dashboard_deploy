@@ -193,14 +193,23 @@ st.set_page_config(
     }
 )
 
-# Simple mobile detection via CSS media queries only
-st.markdown("""
-<style>
-.mobile-only { display: none; }
+# Simple mobile detection using user agent
+def is_mobile_device():
+    try:
+        # Try to get user agent from request context
+        if hasattr(st, 'context') and hasattr(st.context, 'headers'):
+            user_agent = st.context.headers.get("user-agent", "").lower()
+        else:
+            user_agent = ""
+        return any(device in user_agent for device in ['mobile', 'android', 'iphone', 'ipad'])
+    except:
+        return False
 
-@media (max-width: 768px) {
-    .mobile-only { 
-        display: flex !important; 
+# Block mobile access
+if is_mobile_device():
+    st.markdown("""
+    <div style="
+        display: flex;
         position: fixed;
         top: 0;
         left: 0;
@@ -215,18 +224,16 @@ st.markdown("""
         justify-content: center;
         align-items: center;
         font-family: Arial, sans-serif;
-    }
-    .stApp { display: none !important; }
-}
-</style>
+    ">
+        <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
+        <h2 style="margin-bottom: 1rem;">Dashboard non compatible mobile</h2>
+        <p style="margin-bottom: 1rem;">Ce dashboard est optimisé pour ordinateur et tablette.</p>
+        <p style="font-size: 0.9rem; opacity: 0.8;">Largeur d'écran minimum : 768px</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.stop()
 
-<div class="mobile-only">
-    <h1 style="font-size: 3rem; margin-bottom: 1rem;">📱</h1>
-    <h2 style="margin-bottom: 1rem;">Dashboard non compatible mobile</h2>
-    <p style="margin-bottom: 1rem;">Ce dashboard est optimisé pour ordinateur et tablette.</p>
-    <p style="font-size: 0.9rem; opacity: 0.8;">Largeur d'écran minimum : 768px</p>
-</div>
-""", unsafe_allow_html=True)
+# Desktop-only content continues here
 
 # Custom CSS - minimal styling
 st.markdown("""
